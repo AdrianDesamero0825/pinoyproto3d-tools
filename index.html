@@ -30,7 +30,7 @@
       font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
-    nav { padding: 28px 16px; border-right: 1px solid var(--line); background: rgba(17, 26, 36, .86); }
+    nav { display:flex; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin: 0 8px 8px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .brand-subtitle { margin: 0 8px 30px; color: var(--muted); font-size: 12px; }
     .nav-label { margin: 0 8px 9px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -39,6 +39,7 @@
       color: var(--ink); text-decoration: none; line-height: 1.35; transition: .2s ease;
     }
     .tool-link:hover, .tool-link:focus-visible { border-color: rgba(255, 114, 0, .45); background: var(--orange-soft); outline: none; transform: translateX(2px); }
+    .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
     main { width: min(100%, 1180px); margin:0 auto; padding:clamp(28px, 6vw, 78px) clamp(18px, 5vw, 64px); }
     .hero { max-width: 760px; }
     .eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
@@ -63,6 +64,7 @@
       .brand { flex: 0 0 auto; margin: 0 8px 0 0; }
       .brand-subtitle, .nav-label { display: none; }
       .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
+      .saved-link { margin-top:0; padding-top:10px; border-top:0; }
       main { padding: 42px 20px 50px; }
       .tools-grid { grid-template-columns: 1fr; margin-top: 34px; }
     }
@@ -76,7 +78,7 @@
       <p class="nav-label">Tools</p>
       <a class="tool-link" href="tools/customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="tools/quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="tools/quotation-records.html">Saved Quotations</a>
+      <a class="tool-link saved-link" href="tools/quotation-records.html">Saved Quotations</a>
     </nav>
     <main>
       <section class="hero">
