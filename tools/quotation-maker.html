@@ -329,6 +329,37 @@
       }));
     }
 
+    function normalizeMatch(value) {
+      return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+    }
+
+    async function linkQuotationToTracker(quotationId, customerName, projectName) {
+      const { data: trackers, error: trackerError } = await supabaseClient
+        .from("customer_trackers")
+        .select("id, customer_name, project_name, stage")
+        .order("created_at", { ascending:false });
+      if (trackerError) throw new Error(`Could not find a matching customer tracker: ${trackerError.message}`);
+      const customerKey = normalizeMatch(customerName);
+      const projectKey = normalizeMatch(projectName);
+      const tracker = (trackers || []).find((item) =>
+        normalizeMatch(item.customer_name) === customerKey &&
+        normalizeMatch(item.project_name) === projectKey
+      );
+      const { error: quotationLinkError } = await supabaseClient
+        .from("quotations")
+        .update({ tracker_id: tracker?.id || null })
+        .eq("id", quotationId);
+      if (quotationLinkError) throw new Error(`Could not link quotation to customer tracker: ${quotationLinkError.message}`);
+      if (tracker && ["Inquiry", "Quotation sent"].includes(tracker.stage)) {
+        const { error: stageError } = await supabaseClient
+          .from("customer_trackers")
+          .update({ stage:"Quotation Sent", updated_at:new Date().toISOString() })
+          .eq("id", tracker.id);
+        if (stageError) throw new Error(`Could not update tracker stage: ${stageError.message}`);
+      }
+      return tracker;
+    }
+
     async function getNextQuotationNumber(year = new Date().getFullYear()) {
       const { data, error } = await supabaseClient
         .from("quotations")
@@ -411,11 +442,16 @@
           record.quotation_year = Number(record.quotation_number.slice(0, 4));
         }
       }
-      const { error: saveError } = await supabaseClient.from("quotations").upsert(record);
+      const { data: savedQuotation, error: saveError } = await supabaseClient
+        .from("quotations")
+        .upsert(record)
+        .select("id")
+        .single();
       if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
+      const linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name);
       fields.quoteNo.value = record.quotation_number;
       render();
-      setExportStatus(`Saved quotation ${record.quotation_number} online.`, "success");
+      setExportStatus(`Saved quotation ${record.quotation_number} online${linkedTracker ? " and linked to the customer tracker" : ""}.`, "success");
     }
 
     async function createPaperImage() {

@@ -139,6 +139,7 @@
     function recordTotal(record) {
       return (record.items || []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
     }
+    const normalizeMatch = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
     function setAdminState(nextSession) {
       session = nextSession;
       const loggedIn = Boolean(session);
@@ -280,8 +281,12 @@
       }
       recordsElement.innerHTML = filtered.map((record) => {
         const items = (record.items || []).map((item) => `<tr><td>${escapeHtml(item.item)}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.material)}</td><td>${escapeHtml(item.qty)}</td><td>${money(item.price)}</td></tr>`).join("");
-        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div class="record-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(record.id)}">Generate PDF</button></div>${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
+        const trackerInfo = record.tracker ? `<h2>Customer tracker</h2><p><strong>${escapeHtml(record.tracker.stage)}</strong> · ${stageProgress(record.tracker.stage)}% progress</p><p><a href="customer-tracker.html">Open Customer Tracker →</a></p>` : `<h2>Customer tracker</h2><p>No matching tracker linked.</p><p><a href="customer-tracker.html">Open Customer Tracker →</a></p>`;
+        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div class="record-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(record.id)}">Generate PDF</button></div>${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p>${trackerInfo}<h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
       }).join("");
+    }
+    function stageProgress(stage) {
+      return ({ "Inquiry":0, "Quotation Sent":20, "Quotation sent":20, "Paid Downpayment":40, "Paid Fullpayment":55, "In production":70, "For delivery":85, "Completed":100 })[stage] ?? 0;
     }
     async function updateRecord(form) {
       const recordId = form.dataset.recordId;
@@ -293,6 +298,14 @@
         updated_at: new Date().toISOString()
       }).eq("id", recordId);
       if (error) throw new Error(error.message);
+      const { data: trackers, error: trackerError } = await supabaseClient.from("customer_trackers").select("id, customer_name, project_name, stage");
+      if (trackerError) throw new Error(trackerError.message);
+      const tracker = (trackers || []).find((item) =>
+        normalizeMatch(item.customer_name) === normalizeMatch(values.customer_name) &&
+        normalizeMatch(item.project_name) === normalizeMatch(values.project_name)
+      );
+      const { error: linkError } = await supabaseClient.from("quotations").update({ tracker_id: tracker?.id || null }).eq("id", recordId);
+      if (linkError) throw new Error(linkError.message);
       statusElement.textContent = "Quotation updated.";
       await loadRecords();
     }
@@ -316,6 +329,15 @@
         return;
       }
       records = response.data || [];
+      const { data: trackers, error: trackerError } = await supabaseClient.from("customer_trackers").select("id, customer_name, project_name, stage");
+      if (trackerError) {
+        statusElement.textContent = `Could not load tracker links: ${trackerError.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      records.forEach((record) => {
+        record.tracker = (trackers || []).find((tracker) => tracker.id === record.tracker_id) || null;
+      });
       statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"}`;
       renderRecords();
     }
