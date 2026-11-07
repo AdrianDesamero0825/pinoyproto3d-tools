@@ -31,11 +31,12 @@
     }
 
     .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
-    nav { padding: 28px 16px; border-right: 1px solid var(--line); background: rgba(17, 26, 36, .86); }
+    nav { display:flex; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin: 0 8px 28px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .nav-label { margin: 0 8px 9px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .tool-link { display: block; padding: 12px; border: 1px solid transparent; border-radius: 10px; color: var(--ink); text-decoration: none; line-height: 1.35; transition: .2s ease; }
     .tool-link:hover, .tool-link:focus-visible, .tool-link.active { border-color: rgba(255, 114, 0, .45); background: rgba(255, 114, 0, .12); outline: none; transform: translateX(2px); }
+    .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
     .content { width: min(100%, 1180px); min-width: 0; margin: 0 auto; padding: clamp(20px, 4vw, 34px) clamp(14px, 3vw, 34px) 54px; }
     header { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 28px; }
     .home-link {
@@ -110,6 +111,7 @@
       .brand { flex: 0 0 auto; margin: 0 8px 0 0; font-size: 11px; }
       .nav-label { display: none; }
       .tool-link { flex: 0 0 auto; padding: 10px; font-size: 12px; white-space: nowrap; }
+      .saved-link { margin-top:0; padding-top:10px; border-top:0; }
       .content { padding: 22px 14px 40px; }
     }
     @media (max-width: 480px) {
@@ -139,6 +141,7 @@
       <p class="nav-label">Tools</p>
       <a class="tool-link active" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
     </nav>
 
     <div class="content">
