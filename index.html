@@ -57,6 +57,9 @@
     .tool-card h2 { margin: 28px 0 8px; font-size: 22px; letter-spacing: -.03em; }
     .tool-card p { max-width: 350px; margin: 0; color: var(--muted); }
     .card-link { margin-top: 20px; color: #ffb37a; font-size: 13px; font-weight: 800; }
+    .footer-links { display:flex; flex-wrap:wrap; gap:0 24px; margin-top:56px; padding-top:18px; border-top:1px solid var(--line); }
+    .footer-links a { color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .footer-links a:hover, .footer-links a:focus-visible { color:var(--orange); text-decoration:underline; outline:none; }
     @media (max-width: 700px) {
       .app { display: block; }
       nav { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -101,6 +104,9 @@
           <span class="card-link">Open quotation maker →</span>
         </a>
       </section>
+      <footer class="footer-links" aria-label="Additional links">
+        <a href="tools/quotation-records.html">View saved quotation information →</a>
+      </footer>
     </main>
   </div>
 </body>
