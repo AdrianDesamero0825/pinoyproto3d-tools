@@ -48,6 +48,8 @@
     .record-body p { margin:4px 0; color:var(--muted); white-space:pre-wrap; }
     .record-body strong { color:var(--ink); }
     .record-actions { display:flex; flex-wrap:wrap; gap:8px; grid-column:1/-1; }
+    .pdf-button { padding:9px 12px; border:0; border-radius:8px; color:#fff; background:var(--orange); font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+    .pdf-button:hover { filter:brightness(1.15); }
     .edit-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; grid-column:1/-1; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111a24; }
     .edit-form label { display:grid; gap:4px; color:var(--muted); font-size:11px; font-weight:700; }
     .edit-form input { width:100%; padding:8px; }
@@ -102,6 +104,7 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
     const recordsElement = document.getElementById("records");
@@ -144,6 +147,78 @@
       if (!session) return "";
       return `<form class="edit-form" data-record-id="${escapeHtml(record.id)}"><label>Project name<input name="project_name" value="${escapeHtml(record.project_name)}" required></label><label>Customer name<input name="customer_name" value="${escapeHtml(record.customer_name)}"></label><label>Quotation date<input name="quotation_date" type="date" value="${escapeHtml(record.quotation_date)}"></label><div class="record-actions"><button class="admin-button" type="submit">Save changes</button>${adminButton("Delete quotation","danger",`data-delete-id="${escapeHtml(record.id)}"`)}</div></form>`;
     }
+    async function savePdf(pdf, record) {
+      const filename = `${record.quotation_number || "quotation"}.pdf`;
+      const blob = pdf.output("blob");
+      if ("showSaveFilePicker" in window) {
+        const handle = await window.showSaveFilePicker({ suggestedName:filename, types:[{ description:"PDF document", accept:{"application/pdf":[".pdf"]} }] });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      }
+      pdf.save(filename);
+    }
+    async function generateQuotationPdf(record) {
+      if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export is unavailable.");
+      const pdf = new window.jspdf.jsPDF({ unit:"mm", format:"a4" });
+      const left = 16;
+      let y = 18;
+      const line = (text, size = 10, bold = false) => {
+        pdf.setFont("helvetica", bold ? "bold" : "normal");
+        pdf.setFontSize(size);
+        pdf.text(String(text || ""), left, y);
+        y += size * .55 + 3;
+      };
+      pdf.setFillColor(23, 35, 44);
+      pdf.rect(0, 0, 210, 34, "F");
+      pdf.setTextColor(255, 255, 255);
+      line("PINOYPROTO 3D", 16, true);
+      line("QUOTATION", 12, true);
+      pdf.setTextColor(17, 17, 17);
+      y = 45;
+      line(`Quotation no.: ${record.quotation_number}`, 11, true);
+      line(`Date: ${record.quotation_date || ""}`);
+      line(`Customer: ${record.customer_name || ""}`);
+      line(`Contact: ${record.contact || ""}`);
+      line(`Address: ${record.address || ""}`);
+      y += 3;
+      line(`Project: ${record.project_name || ""}`, 12, true);
+      line(`Bill to: ${record.bill_to || ""}`);
+      line(`Ship to: ${record.ship_to || ""}`);
+      y += 4;
+      pdf.setFillColor(23, 35, 44);
+      pdf.rect(left, y - 5, 178, 8, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.text("ITEM", left + 2, y);
+      pdf.text("DESCRIPTION", left + 42, y);
+      pdf.text("MATERIAL", left + 94, y);
+      pdf.text("QTY", left + 132, y);
+      pdf.text("UNIT PRICE", left + 150, y);
+      y += 8;
+      pdf.setTextColor(17, 17, 17);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      let total = 0;
+      (record.items || []).forEach((item) => {
+        const amount = Number(item.qty || 0) * Number(item.price || 0);
+        total += amount;
+        const values = [item.item, item.description, item.material, item.qty, money(item.price)];
+        [left + 2, left + 42, left + 94, left + 132, left + 150].forEach((x, index) => pdf.text(String(values[index] || "").slice(0, 26), x, y));
+        pdf.line(left, y + 2, left + 178, y + 2);
+        y += 7;
+      });
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`GRAND TOTAL: ${money(total)}`, left + 112, y + 5);
+      y += 18;
+      line("Terms & Conditions", 11, true);
+      (record.terms || []).forEach((term) => line(`${term.header}: ${term.details}`, 8));
+      line("Payment Methods", 11, true);
+      (record.payments || []).forEach((payment) => line(payment.name, 8));
+      await savePdf(pdf, record);
+    }
     function renderRecords() {
       const query = searchInput.value.trim().toLowerCase();
       const filtered = records.filter((record) => [record.quotation_number, record.project_name, record.customer_name]
@@ -154,7 +229,7 @@
       }
       recordsElement.innerHTML = filtered.map((record) => {
         const items = (record.items || []).map((item) => `<tr><td>${escapeHtml(item.item)}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.material)}</td><td>${escapeHtml(item.qty)}</td><td>${money(item.price)}</td></tr>`).join("");
-        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body">${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
+        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div class="record-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(record.id)}">Generate PDF</button></div>${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
       }).join("");
     }
     async function updateRecord(form) {
@@ -224,6 +299,22 @@
       try { await updateRecord(event.target); } catch (error) { statusElement.textContent = `Could not update quotation: ${error.message}`; statusElement.className = "status error"; }
     });
     recordsElement.addEventListener("click", async (event) => {
+      const pdfButton = event.target.closest("[data-pdf-id]");
+      if (pdfButton) {
+        const record = records.find((item) => item.id === pdfButton.dataset.pdfId);
+        if (!record) return;
+        pdfButton.disabled = true;
+        try {
+          await generateQuotationPdf(record);
+          statusElement.textContent = `PDF generated for ${record.quotation_number}.`;
+        } catch (error) {
+          statusElement.textContent = `Could not generate PDF: ${error.message}`;
+          statusElement.className = "status error";
+        } finally {
+          pdfButton.disabled = false;
+        }
+        return;
+      }
       const deleteButton = event.target.closest("[data-delete-id]");
       if (!deleteButton) return;
       try { await deleteRecord(deleteButton.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete quotation: ${error.message}`; statusElement.className = "status error"; }
