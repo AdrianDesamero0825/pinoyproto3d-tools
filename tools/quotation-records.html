@@ -62,6 +62,15 @@
     .items th,.items td { padding:7px; border-bottom:1px solid var(--line); text-align:left; }
     .items th { color:var(--muted); }
     .empty { padding:26px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
+    .transaction-card { display:grid; gap:8px; padding:16px; border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); }
+    .transaction-card h2 { margin:0; font-size:17px; }
+    .transaction-meta { display:flex; flex-wrap:wrap; gap:8px 18px; color:var(--muted); font-size:12px; }
+    .transaction-card p { margin:0; color:var(--muted); }
+    .transaction-card strong { color:var(--ink); }
+    .transaction-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+    .page-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+    .page-tab { padding:9px 12px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:#111a24; font:inherit; font-weight:800; cursor:pointer; }
+    .page-tab.active,.page-tab:hover { border-color:rgba(255,114,0,.55); color:var(--ink); background:rgba(255,114,0,.12); }
     @media (max-width:700px) {
       .app { display:block; }
       nav { position:static; display:flex; height:auto; min-height:0; align-items:center; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
@@ -90,10 +99,16 @@
       <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link active saved-link" href="quotation-records.html">Saved Quotations</a>
+      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
     </nav>
     <main>
       <h1>Saved quotations</h1>
       <p class="intro">Quotation information saved in your Supabase database.</p>
+      <div class="page-tabs" role="tablist" aria-label="Quotation records">
+        <button class="page-tab active" id="savedTab" type="button" role="tab" aria-selected="true">Saved Quotations</button>
+        <button class="page-tab" id="transactionsTab" type="button" role="tab" aria-selected="false">Transactions Done</button>
+      </div>
+      <section id="savedView" class="tab-panel">
       <div class="toolbar">
         <input id="searchInput" type="search" placeholder="Search project, customer, or quotation number" aria-label="Search saved quotations">
       </div>
@@ -110,6 +125,11 @@
       </section>
       <p class="status" id="status" aria-live="polite">Loading saved quotations…</p>
       <section class="records" id="records" aria-label="Saved quotations"></section>
+      </section>
+      <section id="transactionsView" class="tab-panel" hidden>
+        <p class="status" id="transactionsStatus" aria-live="polite">Loading completed transactions…</p>
+        <section class="records" id="transactions" aria-label="Completed transactions"></section>
+      </section>
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -125,7 +145,14 @@
     const adminUser = document.getElementById("adminUser");
     const logoutButton = document.getElementById("logoutButton");
     const clearAllButton = document.getElementById("clearAllButton");
+    const savedView = document.getElementById("savedView");
+    const transactionsView = document.getElementById("transactionsView");
+    const savedTab = document.getElementById("savedTab");
+    const transactionsTab = document.getElementById("transactionsTab");
+    const transactionsElement = document.getElementById("transactions");
+    const transactionsStatus = document.getElementById("transactionsStatus");
     let records = [];
+    let completedTransactions = [];
     let session = null;
 
     function escapeHtml(value) {
@@ -285,6 +312,36 @@
         return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div class="record-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(record.id)}">Generate PDF</button></div>${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p>${trackerInfo}<h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
       }).join("");
     }
+    function renderTransactions() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = completedTransactions.filter((transaction) => [transaction.customer_name, transaction.project_name, transaction.quotation?.quotation_number]
+        .some((value) => String(value || "").toLowerCase().includes(query)));
+      transactionsStatus.textContent = `${completedTransactions.length} completed transaction${completedTransactions.length === 1 ? "" : "s"}`;
+      if (!filtered.length) {
+        transactionsElement.innerHTML = `<div class="empty">${completedTransactions.length ? "No completed transactions match your search." : "No completed customer orders yet."}</div>`;
+        return;
+      }
+      transactionsElement.innerHTML = filtered.map((transaction) => {
+        const quotation = transaction.quotation;
+        const total = quotation ? recordTotal(quotation) : Number(transaction.quoted_amount || 0);
+        const paid = Number(transaction.paid_amount || 0);
+        const quotationDetails = quotation
+          ? `<p>Quotation <strong>${escapeHtml(quotation.quotation_number)}</strong> · ${escapeHtml(quotation.quotation_date || "No date")} · ${money(total)}</p><div class="transaction-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(quotation.id)}">Generate PDF</button></div>`
+          : `<p>No linked quotation was found for this completed order.</p>`;
+        return `<article class="transaction-card"><h2>${escapeHtml(transaction.project_name || "Untitled project")}</h2><div class="transaction-meta"><span>Customer: <strong>${escapeHtml(transaction.customer_name || "No customer name")}</strong></span><span>Completed: ${escapeHtml(transaction.updated_at ? new Date(transaction.updated_at).toLocaleDateString("en-PH") : "No date")}</span></div>${quotationDetails}<p>Paid: ${money(paid)} · Balance: ${money(Math.max(total - paid, 0))}</p></article>`;
+      }).join("");
+    }
+    function setView(view) {
+      const transactionsActive = view === "transactions";
+      savedView.hidden = transactionsActive;
+      transactionsView.hidden = !transactionsActive;
+      savedTab.classList.toggle("active", !transactionsActive);
+      transactionsTab.classList.toggle("active", transactionsActive);
+      savedTab.setAttribute("aria-selected", String(!transactionsActive));
+      transactionsTab.setAttribute("aria-selected", String(transactionsActive));
+      if (transactionsActive) renderTransactions();
+      history.replaceState(null, "", transactionsActive ? "#transactions" : "#saved");
+    }
     function stageProgress(stage) {
       return ({ "Inquiry":0, "Quotation Sent":20, "Quotation sent":20, "Paid Downpayment":40, "Paid Fullpayment":55, "In production":70, "For delivery":85, "Completed":100 })[stage] ?? 0;
     }
@@ -298,7 +355,7 @@
         updated_at: new Date().toISOString()
       }).eq("id", recordId);
       if (error) throw new Error(error.message);
-      const { data: trackers, error: trackerError } = await supabaseClient.from("customer_trackers").select("id, customer_name, project_name, stage");
+      const { data: trackers, error: trackerError } = await supabaseClient.from("customer_trackers").select("id, customer_name, project_name, stage, quoted_amount, paid_amount, updated_at");
       if (trackerError) throw new Error(trackerError.message);
       const tracker = (trackers || []).find((item) =>
         normalizeMatch(item.customer_name) === normalizeMatch(values.customer_name) &&
@@ -338,10 +395,25 @@
       records.forEach((record) => {
         record.tracker = (trackers || []).find((tracker) => tracker.id === record.tracker_id) || null;
       });
+      completedTransactions = (trackers || [])
+        .filter((tracker) => tracker.stage === "Completed")
+        .map((tracker) => ({
+          ...tracker,
+          quotation: records.find((record) => record.tracker_id === tracker.id)
+            || records.find((record) => normalizeMatch(record.customer_name) === normalizeMatch(tracker.customer_name)
+              && normalizeMatch(record.project_name) === normalizeMatch(tracker.project_name))
+            || null
+        }));
       statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"}`;
       renderRecords();
+      renderTransactions();
     }
-    searchInput.addEventListener("input", renderRecords);
+    searchInput.addEventListener("input", () => {
+      renderRecords();
+      renderTransactions();
+    });
+    savedTab.addEventListener("click", () => setView("saved"));
+    transactionsTab.addEventListener("click", () => setView("transactions"));
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value.trim(), password: passwordInput.value });
@@ -392,7 +464,26 @@
       if (!deleteButton) return;
       try { await deleteRecord(deleteButton.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete quotation: ${error.message}`; statusElement.className = "status error"; }
     });
-    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
+    transactionsElement.addEventListener("click", async (event) => {
+      const pdfButton = event.target.closest("[data-pdf-id]");
+      if (!pdfButton) return;
+      const record = records.find((item) => item.id === pdfButton.dataset.pdfId);
+      if (!record) return;
+      pdfButton.disabled = true;
+      try {
+        await generateQuotationPdf(record);
+        transactionsStatus.textContent = `PDF generated for ${record.quotation_number}.`;
+      } catch (error) {
+        transactionsStatus.textContent = `Could not generate PDF: ${error.message}`;
+        transactionsStatus.className = "status error";
+      } finally {
+        pdfButton.disabled = false;
+      }
+    });
+    supabaseClient.auth.getSession().then(({ data }) => {
+      setAdminState(data.session);
+      setView(window.location.hash === "#transactions" ? "transactions" : "saved");
+    });
     loadRecords();
   </script>
 </body>

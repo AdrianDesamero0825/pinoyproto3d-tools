@@ -92,18 +92,20 @@
       <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
+      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
     </nav>
     <main>
       <div class="page-heading"><div><h1>Dashboard</h1><p class="intro">Company performance at a glance.</p></div><div class="date-range" id="dateRange"></div></div>
       <p class="status" id="status" aria-live="polite">Loading quotation statistics…</p>
-      <section class="stats-grid" aria-label="Quotation statistics">
-        <article class="stat-card"><div class="stat-label">Total quotations</div><div class="stat-value" id="totalCount">—</div><div class="stat-note" id="countNote"></div></article>
-        <article class="stat-card"><div class="stat-label">Total quoted value</div><div class="stat-value" id="totalValue">—</div><div class="stat-note">Across all saved records</div></article>
-        <article class="stat-card"><div class="stat-label">Average quotation</div><div class="stat-value" id="averageValue">—</div><div class="stat-note">Average quoted value</div></article>
-        <article class="stat-card"><div class="stat-label">This month</div><div class="stat-value" id="monthCount">—</div><div class="stat-note" id="monthLabel"></div></article>
+      <section class="stats-grid" aria-label="Business statistics">
+        <article class="stat-card"><div class="stat-label">Validated quotations</div><div class="stat-value" id="totalCount">—</div><div class="stat-note" id="countNote"></div></article>
+        <article class="stat-card"><div class="stat-label">Total quoted value</div><div class="stat-value" id="totalValue">—</div><div class="stat-note">Offers only, not sales</div></article>
+        <article class="stat-card"><div class="stat-label">Total sales collected</div><div class="stat-value" id="salesValue">—</div><div class="stat-note">Downpayments and full payments</div></article>
+        <article class="stat-card"><div class="stat-label">Balance due</div><div class="stat-value" id="balanceValue">—</div><div class="stat-note">Quoted amount less payments</div></article>
+        <article class="stat-card"><div class="stat-label">Sales this month</div><div class="stat-value" id="monthCount">—</div><div class="stat-note" id="monthLabel"></div></article>
       </section>
       <div class="dashboard-grid">
-        <section class="panel" aria-label="Sales trend"><div class="panel-header"><h2>Sales trend</h2><span>Quoted value by month</span></div><div class="trend" id="trend"></div></section>
+        <section class="panel" aria-label="Sales trend"><div class="panel-header"><h2>Sales trend</h2><span>Collected payments by month</span></div><div class="trend" id="trend"></div></section>
         <section class="panel" aria-label="Top projects"><div class="panel-header"><h2>Top projects</h2><span>By quoted value</span></div><div class="breakdown" id="topProjects"></div></section>
       </div>
       <div class="insights" aria-label="Business insights">
@@ -126,60 +128,87 @@
     const recordTotal = (record) => (Array.isArray(record.items) ? record.items : []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
     const monthKey = (date) => String(date || "").slice(0, 7);
     const monthLabel = (key) => new Date(`${key}-01T00:00:00`).toLocaleDateString("en-PH", { month:"short" });
-    const aggregateBy = (records, field) => records.reduce((groups, record) => {
+    const aggregateBy = (records, field, valueForRecord = recordTotal) => records.reduce((groups, record) => {
       const key = String(record[field] || "Unspecified").trim() || "Unspecified";
-      groups[key] = (groups[key] || 0) + recordTotal(record);
+      groups[key] = (groups[key] || 0) + valueForRecord(record);
       return groups;
     }, {});
+    const trackerQuotedTotal = (tracker) => Number(tracker.quoted_amount || 0) || recordTotal(tracker.quotation || {});
+    const trackerPaidTotal = (tracker) => Number(tracker.paid_amount || 0);
+    const trackerBalance = (tracker) => Math.max(trackerQuotedTotal(tracker) - trackerPaidTotal(tracker), 0);
+    const isValidatedTracker = (tracker) => ["Paid Downpayment", "Paid Fullpayment"].includes(tracker.stage);
     function renderBreakdown(elementId, values) {
       const element = document.getElementById(elementId);
       const entries = Object.entries(values).sort((a, b) => b[1] - a[1]).slice(0, 5);
       const maximum = entries[0]?.[1] || 1;
       element.innerHTML = entries.length ? entries.map(([name, value]) => `<div class="breakdown-row"><span class="breakdown-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="breakdown-meta">${money(value)}</span><div class="breakdown-track"><div class="breakdown-fill" style="width:${Math.max(3, value / maximum * 100)}%"></div></div></div>`).join("") : '<div class="empty">No quotation data yet.</div>';
     }
-    function renderTrend(records) {
+    function renderTrend(trackers) {
       const now = new Date();
       const months = Array.from({ length:6 }, (_, index) => {
         const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       });
-      const values = months.map((key) => records.filter((record) => monthKey(record.quotation_date) === key).reduce((total, record) => total + recordTotal(record), 0));
+      const values = months.map((key) => trackers.filter((tracker) => monthKey(tracker.updated_at) === key).reduce((total, tracker) => total + trackerPaidTotal(tracker), 0));
       const maximum = Math.max(...values, 1);
       document.getElementById("trend").innerHTML = months.map((key, index) => `<div class="trend-column"><span class="trend-value">${values[index] ? money(values[index]) : "—"}</span><div class="trend-bar" style="height:${Math.max(3, values[index] / maximum * 100)}%"></div><span class="trend-label">${monthLabel(key)}</span></div>`).join("");
     }
-    function renderDashboard(records) {
-      const totalValue = records.reduce((total, record) => total + recordTotal(record), 0);
+    function renderDashboard(records, trackers) {
+      const validatedTrackers = trackers.filter((tracker) => isValidatedTracker(tracker) && tracker.quotation);
+      const validatedRecords = validatedTrackers.map((tracker) => tracker.quotation);
+      const totalValue = validatedRecords.reduce((total, record) => total + recordTotal(record), 0);
+      const salesValue = validatedTrackers.reduce((total, tracker) => total + trackerPaidTotal(tracker), 0);
+      const balanceValue = validatedTrackers.reduce((total, tracker) => total + trackerBalance(tracker), 0);
       const monthPrefix = monthKey(new Date().toISOString());
-      const monthCount = records.filter((record) => String(record.quotation_date || "").startsWith(monthPrefix)).length;
-      document.getElementById("totalCount").textContent = records.length.toLocaleString();
-      document.getElementById("countNote").textContent = `${new Set(records.map((record) => record.customer_name).filter(Boolean)).size} customer${new Set(records.map((record) => record.customer_name).filter(Boolean)).size === 1 ? "" : "s"}`;
+      const monthSales = validatedTrackers.filter((tracker) => monthKey(tracker.updated_at) === monthPrefix).reduce((total, tracker) => total + trackerPaidTotal(tracker), 0);
+      document.getElementById("totalCount").textContent = validatedRecords.length.toLocaleString();
+      document.getElementById("countNote").textContent = `${new Set(validatedRecords.map((record) => record.customer_name).filter(Boolean)).size} validated customer${new Set(validatedRecords.map((record) => record.customer_name).filter(Boolean)).size === 1 ? "" : "s"}`;
       document.getElementById("totalValue").textContent = money(totalValue);
-      document.getElementById("averageValue").textContent = money(records.length ? totalValue / records.length : 0);
-      document.getElementById("monthCount").textContent = monthCount.toLocaleString();
+      document.getElementById("salesValue").textContent = money(salesValue);
+      document.getElementById("balanceValue").textContent = money(balanceValue);
+      document.getElementById("monthCount").textContent = money(monthSales);
       document.getElementById("monthLabel").textContent = new Date().toLocaleDateString("en-PH", { month:"long", year:"numeric" });
       document.getElementById("dateRange").textContent = `Updated ${new Date().toLocaleDateString("en-PH", { month:"long", day:"numeric", year:"numeric" })}`;
-      const projectValues = aggregateBy(records, "project_name");
-      const customerValues = aggregateBy(records, "customer_name");
+      const projectValues = aggregateBy(validatedRecords, "project_name");
+      const customerValues = aggregateBy(validatedRecords, "customer_name");
       const topProject = Object.entries(projectValues).sort((a, b) => b[1] - a[1])[0];
       const topCustomer = Object.entries(customerValues).sort((a, b) => b[1] - a[1])[0];
       document.getElementById("topProject").textContent = topProject ? topProject[0] : "—";
       document.getElementById("topCustomer").textContent = topCustomer ? topCustomer[0] : "—";
-      document.getElementById("attachmentCount").textContent = `${records.filter((record) => Array.isArray(record.images) && record.images.length).length} / ${records.length || 0}`;
-      renderTrend(records);
+      document.getElementById("attachmentCount").textContent = `${validatedRecords.filter((record) => Array.isArray(record.images) && record.images.length).length} / ${validatedRecords.length || 0}`;
+      renderTrend(validatedTrackers);
       renderBreakdown("topProjects", projectValues);
-      const recent = records.slice(0, 8);
+      const recent = validatedRecords.slice(0, 8);
       document.getElementById("recentList").innerHTML = recent.length ? recent.map((record) => `<div class="activity-row"><span class="activity-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name || "Untitled project")}</strong><span class="activity-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="activity-total">${money(recordTotal(record))}</span></div>`).join("") : '<div class="empty">No saved quotations yet.</div>';
-      statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"} analyzed`;
+      statusElement.textContent = `${validatedRecords.length} validated quotation${validatedRecords.length === 1 ? "" : "s"} analyzed`;
       statusElement.className = "status";
     }
     async function loadDashboard() {
-      const { data, error } = await supabaseClient.from("quotations").select("quotation_number,project_name,customer_name,quotation_date,items,images,created_at").order("created_at", { ascending:false });
+      const [{ data, error }, { data: trackers, error: trackerError }] = await Promise.all([
+        supabaseClient.from("quotations").select("quotation_number,project_name,customer_name,quotation_date,items,images,created_at,tracker_id").order("created_at", { ascending:false }),
+        supabaseClient.from("customer_trackers").select("customer_name,project_name,stage,quoted_amount,paid_amount,updated_at").order("updated_at", { ascending:false })
+      ]);
       if (error) {
         statusElement.textContent = `Could not load quotation statistics: ${error.message}`;
         statusElement.className = "status error";
         return;
       }
-      renderDashboard(data || []);
+      if (trackerError) {
+        statusElement.textContent = `Could not load sales statistics: ${trackerError.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      const quotations = data || [];
+      const latestByMatch = new Map();
+      quotations.forEach((quotation) => {
+        const key = `${String(quotation.customer_name || "").trim().toLowerCase()}|${String(quotation.project_name || "").trim().toLowerCase()}`;
+        if (!latestByMatch.has(key)) latestByMatch.set(key, quotation);
+      });
+      const trackerRecords = (trackers || []).map((tracker) => ({
+        ...tracker,
+        quotation: latestByMatch.get(`${String(tracker.customer_name || "").trim().toLowerCase()}|${String(tracker.project_name || "").trim().toLowerCase()}`) || null
+      }));
+      renderDashboard(quotations, trackerRecords);
     }
     loadDashboard();
   </script>
