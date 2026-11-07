@@ -14,10 +14,11 @@
     .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
     nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
-    .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-weight:700; text-decoration:none; }
-    .back:hover,.back:focus-visible { color:var(--orange); }
-    .nav-label { margin:0 8px 9px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
-    .tool-link { display:block; padding:12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; transition:.2s ease; }
+    .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .back:hover,.back:focus-visible { color:var(--orange); outline:none; }
+    .nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .back + .nav-label { margin-top:0; }
+    .tool-link { display:block; margin:0 2px; padding:11px 12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; transition:.2s ease; }
     .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; transform:translateX(2px); }
     .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
     main { width:min(100%,1100px); margin:0 auto; padding:clamp(24px,5vw,58px); }
@@ -65,6 +66,7 @@
       .app { display:block; }
       nav { position:static; display:flex; height:auto; min-height:0; align-items:center; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
       .brand { flex:0 0 auto; margin:0 8px 0 0; }
+      .back { flex:0 0 auto; margin:0 8px 0 0; white-space:nowrap; }
       .nav-label { display:none; }
       .tool-link { flex:0 0 auto; padding:10px 12px; white-space:nowrap; }
       .saved-link { margin-top:0; padding-top:10px; border-top:0; }
@@ -83,6 +85,7 @@
       <a class="back" href="../index.html">← Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
+      <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
       <p class="nav-label">Tools</p>
       <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>

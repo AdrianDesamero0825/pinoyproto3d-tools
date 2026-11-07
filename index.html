@@ -33,9 +33,10 @@
     nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin: 0 8px 8px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .brand-subtitle { margin: 0 8px 30px; color: var(--muted); font-size: 12px; }
-    .nav-label { margin: 0 8px 9px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .nav-label { margin: 18px 8px 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .back + .nav-label { margin-top: 0; }
     .tool-link {
-      display: block; padding: 12px; border: 1px solid transparent; border-radius: 10px;
+      display: block; margin: 0 2px; padding: 11px 12px; border: 1px solid transparent; border-radius: 10px;
       color: var(--ink); text-decoration: none; line-height: 1.35; transition: .2s ease;
     }
     .tool-link:hover, .tool-link:focus-visible { border-color: rgba(255, 114, 0, .45); background: var(--orange-soft); outline: none; transform: translateX(2px); }
@@ -77,6 +78,7 @@
       <p class="brand-subtitle">Production tools</p>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="tools/dashboard.html">Dashboard</a>
+      <a class="tool-link" href="tools/customer-tracker.html">Customer Tracker</a>
       <p class="nav-label">Tools</p>
       <a class="tool-link" href="tools/customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="tools/quotation-maker.html">Quotation Maker</a>

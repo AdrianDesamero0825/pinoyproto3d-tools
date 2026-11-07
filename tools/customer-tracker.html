@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Track customer project progress for PinoyProto 3D.">
+  <title>PinoyProto 3D - Customer Tracker</title>
+  <style>
+    :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --line:#2b3a4b; --orange:#ff7200; --green:#8ee0a4; --red:#ff9a9a; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+    nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .back:hover,.back:focus-visible { color:var(--orange); outline:none; }
+    .nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .back + .nav-label { margin-top:0; }
+    .tool-link { display:block; margin:0 2px; padding:11px 12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; transition:.2s ease; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; transform:translateX(2px); }
+    .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
+    main { width:min(100%,1180px); margin:0 auto; padding:clamp(24px,5vw,58px); }
+    .page-heading { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:26px; }
+    h1 { margin:0 0 8px; font-size:clamp(30px,5vw,46px); letter-spacing:-.05em; }
+    .intro { margin:0; color:var(--muted); }
+    .date-note { color:var(--muted); font-size:12px; text-align:right; }
+    .workspace { display:grid; grid-template-columns:minmax(280px,340px) minmax(0,1fr); gap:18px; align-items:start; }
+    .panel,.tracker-card { border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); }
+    .panel { padding:18px; }
+    .panel h2 { margin:0 0 16px; font-size:16px; }
+    form { display:grid; gap:11px; }
+    label { display:grid; gap:5px; color:#dbe5ef; font-size:12px; font-weight:700; }
+    input,select,textarea { width:100%; padding:10px 11px; border:1px solid #516276; border-radius:8px; color:var(--ink); background:#111a24; font:inherit; }
+    progress { width:100%; height:10px; accent-color:var(--orange); }
+    textarea { min-height:76px; resize:vertical; }
+    input:focus,select:focus,textarea:focus { border-color:var(--orange); outline:2px solid rgba(255,114,0,.2); }
+    .form-actions { display:flex; gap:8px; margin-top:3px; }
+    button { padding:10px 13px; border:0; border-radius:8px; color:#fff; background:var(--orange); font:inherit; font-weight:800; cursor:pointer; }
+    button:hover:not(:disabled) { filter:brightness(1.12); }
+    button.secondary { background:#2a3848; }
+    button.danger { background:#8d3434; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .tracker-toolbar { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px; }
+    .tracker-toolbar h2 { margin:0; font-size:18px; }
+    .tracker-toolbar input { max-width:280px; }
+    .status { min-height:22px; margin:0 0 12px; color:var(--muted); }
+    .status.error { color:var(--red); }
+    .trackers { display:grid; gap:12px; }
+    .tracker-card { padding:17px; }
+    .tracker-top { display:flex; justify-content:space-between; gap:12px; align-items:start; }
+    .tracker-top h3 { margin:0 0 4px; font-size:16px; }
+    .tracker-customer { color:var(--muted); font-size:12px; }
+    .status-badge { padding:4px 8px; border-radius:99px; color:#ffb37a; background:rgba(255,114,0,.12); font-size:11px; font-weight:800; white-space:nowrap; }
+    .progress-row { display:flex; justify-content:space-between; gap:10px; margin:17px 0 7px; color:var(--muted); font-size:12px; }
+    .progress-value { color:var(--ink); font-weight:900; }
+    .progress-track { height:9px; overflow:hidden; border-radius:99px; background:#253343; }
+    .progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,#ff9a4a,var(--orange)); }
+    .tracker-meta { display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; color:var(--muted); font-size:12px; }
+    .tracker-notes { margin:12px 0 0; padding-top:10px; border-top:1px solid var(--line); color:#c8d2de; white-space:pre-wrap; }
+    .tracker-actions { display:flex; gap:8px; margin-top:14px; }
+    .empty { padding:32px 18px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
+    @media (max-width:900px) { .workspace { grid-template-columns:1fr; } .panel { max-width:none; } }
+    @media (max-width:700px) {
+      .app { display:block; }
+      nav { position:static; display:flex; height:auto; min-height:0; align-items:center; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
+      .brand { flex:0 0 auto; margin:0 8px 0 0; }
+      .back { flex:0 0 auto; margin:0 8px 0 0; white-space:nowrap; }
+      .nav-label { display:none; }
+      .tool-link { flex:0 0 auto; padding:10px 12px; white-space:nowrap; }
+      .saved-link { margin-top:0; padding-top:10px; border-top:0; }
+      main { padding:34px 18px; }
+      .page-heading { display:block; }
+      .date-note { margin-top:10px; text-align:left; }
+      .tracker-toolbar { display:block; }
+      .tracker-toolbar input { max-width:none; margin-top:10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <a class="back" href="../index.html">← Return to home</a>
+      <p class="nav-label">Statistics</p>
+      <a class="tool-link" href="dashboard.html">Dashboard</a>
+      <a class="tool-link active" href="customer-tracker.html">Customer Tracker</a>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
+    </nav>
+    <main>
+      <div class="page-heading"><div><h1>Customer Tracker</h1><p class="intro">Track every customer project from inquiry to completion.</p></div><div class="date-note">Private to this browser</div></div>
+      <div class="workspace">
+        <section class="panel" aria-label="Add customer tracker">
+          <h2 id="formTitle">Add customer progress</h2>
+          <form id="trackerForm">
+            <label>Customer name<input id="customerInput" required placeholder="e.g. Adrian Santos"></label>
+            <label>Project name<input id="projectInput" required placeholder="e.g. Custom keychains"></label>
+            <label>Current stage<select id="stageInput"><option>Inquiry</option><option>Quotation sent</option><option>Awaiting payment</option><option>In production</option><option>For delivery</option><option>Completed</option></select></label>
+            <label>Progress based on stage <span id="progressLabel">0%</span><progress id="progressInput" max="100" value="0"></progress></label>
+            <label>Target date<input id="dateInput" type="date"></label>
+            <label>Notes<textarea id="notesInput" placeholder="Add updates, reminders, or next steps"></textarea></label>
+            <div class="form-actions"><button id="saveButton" type="submit">Add tracker</button><button class="secondary" id="cancelButton" type="button" hidden>Cancel</button></div>
+          </form>
+        </section>
+        <section aria-label="Customer progress trackers">
+          <div class="tracker-toolbar"><h2>Active customer projects</h2><input id="searchInput" type="search" placeholder="Search customers or projects" aria-label="Search trackers"></div>
+          <p class="status" id="status" aria-live="polite"></p>
+          <div class="trackers" id="trackers"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    const STORAGE_KEY = "pinoyproto3d.customerTrackers";
+    const STAGE_PROGRESS = { "Inquiry":0, "Quotation sent":20, "Awaiting payment":40, "In production":65, "For delivery":85, "Completed":100 };
+    const form = document.getElementById("trackerForm");
+    const customerInput = document.getElementById("customerInput");
+    const projectInput = document.getElementById("projectInput");
+    const stageInput = document.getElementById("stageInput");
+    const progressInput = document.getElementById("progressInput");
+    const progressLabel = document.getElementById("progressLabel");
+    const dateInput = document.getElementById("dateInput");
+    const notesInput = document.getElementById("notesInput");
+    const trackersElement = document.getElementById("trackers");
+    const searchInput = document.getElementById("searchInput");
+    const statusElement = document.getElementById("status");
+    const formTitle = document.getElementById("formTitle");
+    const saveButton = document.getElementById("saveButton");
+    const cancelButton = document.getElementById("cancelButton");
+    let trackers = [];
+    let editingId = null;
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
+    function loadTrackers() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        trackers = Array.isArray(stored) ? stored : [];
+      } catch {
+        trackers = [];
+        statusElement.textContent = "Saved tracker data could not be read.";
+        statusElement.className = "status error";
+      }
+    }
+    function saveTrackers() { localStorage.setItem(STORAGE_KEY, JSON.stringify(trackers)); }
+    function stageProgress(stage) { return STAGE_PROGRESS[stage] ?? 0; }
+    function updateProgressFromStage() {
+      const progress = stageProgress(stageInput.value);
+      progressInput.value = progress;
+      progressLabel.textContent = `${progress}%`;
+    }
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      stageInput.value = "Inquiry";
+      updateProgressFromStage();
+      formTitle.textContent = "Add customer progress";
+      saveButton.textContent = "Add tracker";
+      cancelButton.hidden = true;
+    }
+    function renderTrackers() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = trackers.filter((tracker) => `${tracker.customer} ${tracker.project}`.toLowerCase().includes(query));
+      statusElement.textContent = `${trackers.length} tracker${trackers.length === 1 ? "" : "s"} saved`;
+      statusElement.className = "status";
+      if (!filtered.length) {
+        trackersElement.innerHTML = `<div class="empty">${trackers.length ? "No trackers match your search." : "No customer trackers yet. Add your first project progress above."}</div>`;
+        return;
+      }
+      filtered.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+      trackersElement.innerHTML = filtered.map((tracker) => {
+        const progress = stageProgress(tracker.stage);
+        return `<article class="tracker-card"><div class="tracker-top"><div><h3>${escapeHtml(tracker.project)}</h3><div class="tracker-customer">${escapeHtml(tracker.customer)}</div></div><span class="status-badge">${escapeHtml(tracker.stage)}</span></div><div class="progress-row"><span>Project progress</span><span class="progress-value">${progress}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div><div class="tracker-meta"><span>${tracker.date ? `Target: ${escapeHtml(tracker.date)}` : "No target date"}</span><span>Updated: ${escapeHtml(new Date(tracker.updatedAt).toLocaleDateString("en-PH"))}</span></div>${tracker.notes ? `<div class="tracker-notes">${escapeHtml(tracker.notes)}</div>` : ""}<div class="tracker-actions"><button type="button" data-edit-id="${escapeHtml(tracker.id)}">Edit</button><button class="danger" type="button" data-delete-id="${escapeHtml(tracker.id)}">Delete</button></div></article>`;
+      }).join("");
+    }
+    stageInput.addEventListener("change", updateProgressFromStage);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const tracker = { id: editingId || crypto.randomUUID(), customer: customerInput.value.trim(), project: projectInput.value.trim(), stage: stageInput.value, progress: stageProgress(stageInput.value), date: dateInput.value, notes: notesInput.value.trim(), updatedAt: new Date().toISOString() };
+      if (editingId) trackers = trackers.map((item) => item.id === editingId ? tracker : item);
+      else trackers.push(tracker);
+      saveTrackers();
+      resetForm();
+      renderTrackers();
+    });
+    cancelButton.addEventListener("click", resetForm);
+    searchInput.addEventListener("input", renderTrackers);
+    trackersElement.addEventListener("click", (event) => {
+      const editButton = event.target.closest("[data-edit-id]");
+      if (editButton) {
+        const tracker = trackers.find((item) => item.id === editButton.dataset.editId);
+        if (!tracker) return;
+        editingId = tracker.id;
+        customerInput.value = tracker.customer;
+        projectInput.value = tracker.project;
+        stageInput.value = tracker.stage;
+        progressInput.value = stageProgress(tracker.stage);
+        progressLabel.textContent = `${stageProgress(tracker.stage)}%`;
+        dateInput.value = tracker.date;
+        notesInput.value = tracker.notes;
+        formTitle.textContent = "Update customer progress";
+        saveButton.textContent = "Save changes";
+        cancelButton.hidden = false;
+        customerInput.focus();
+        return;
+      }
+      const deleteButton = event.target.closest("[data-delete-id]");
+      if (deleteButton && window.confirm("Delete this customer tracker?")) {
+        trackers = trackers.filter((item) => item.id !== deleteButton.dataset.deleteId);
+        saveTrackers();
+        renderTrackers();
+      }
+    });
+    loadTrackers();
+    renderTrackers();
+  </script>
+</body>
+</html>
