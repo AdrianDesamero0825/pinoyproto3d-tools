@@ -50,6 +50,7 @@
     .record-actions { display:flex; flex-wrap:wrap; gap:8px; grid-column:1/-1; }
     .pdf-button { padding:9px 12px; border:0; border-radius:8px; color:#fff; background:var(--orange); font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
     .pdf-button:hover { filter:brightness(1.15); }
+    .export-frame { position:fixed; top:0; left:-10000px; width:1100px; height:1200px; border:0; opacity:1; pointer-events:none; }
     .edit-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; grid-column:1/-1; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111a24; }
     .edit-form label { display:grid; gap:4px; color:var(--muted); font-size:11px; font-weight:700; }
     .edit-form input { width:100%; padding:8px; }
@@ -159,65 +160,107 @@
       }
       pdf.save(filename);
     }
+    function setFrameField(frameDocument, name, value) {
+      const field = frameDocument.querySelector(`[data-field="${name}"]`);
+      if (field) field.value = value || "";
+    }
+    function setFrameImageSlots(frameWindow, images) {
+      const frameDocument = frameWindow.document;
+      const slotInputs = frameDocument.getElementById("slotInputs");
+      const addImageButton = frameDocument.getElementById("addImageButton");
+      slotInputs.innerHTML = "";
+      const imageSources = Array.isArray(images) ? images.filter(Boolean) : [];
+      for (let index = 0; index < Math.max(1, imageSources.length); index++) addImageButton.click();
+      const slots = [...slotInputs.querySelectorAll(".slot")];
+      imageSources.forEach((source, index) => {
+        const image = frameDocument.createElement("img");
+        image.src = source;
+        image.alt = "Attached render";
+        slots[index].replaceChildren(image);
+      });
+    }
+    function setFramePaymentEntries(frameDocument, payments) {
+      const paymentInputs = frameDocument.getElementById("paymentInputs");
+      paymentInputs.innerHTML = "";
+      (Array.isArray(payments) ? payments : []).forEach((payment) => {
+        const entry = frameDocument.createElement("div");
+        entry.className = "payment-entry";
+        const name = frameDocument.createElement("input");
+        name.type = "text";
+        name.setAttribute("data-payment-name", "");
+        name.value = payment.name || "";
+        const image = frameDocument.createElement("img");
+        image.setAttribute("data-payment-image", "");
+        image.src = payment.source || "";
+        image.alt = `${payment.name || "Payment"} QR code`;
+        entry.append(name, image);
+        paymentInputs.append(entry);
+      });
+    }
+    async function createQuotationMakerFrame(record) {
+      const frame = document.createElement("iframe");
+      frame.title = "Quotation preview export";
+      frame.className = "export-frame";
+      document.body.append(frame);
+      await new Promise((resolve, reject) => {
+        frame.addEventListener("load", resolve, { once:true });
+        frame.addEventListener("error", () => reject(new Error("Could not load the quotation preview.")), { once:true });
+        frame.src = "quotation-maker.html";
+      });
+      const frameWindow = frame.contentWindow;
+      const frameDocument = frameWindow.document;
+      setFrameField(frameDocument, "quoteNo", record.quotation_number);
+      setFrameField(frameDocument, "date", record.quotation_date);
+      setFrameField(frameDocument, "customerName", record.customer_name);
+      setFrameField(frameDocument, "contact", record.contact);
+      setFrameField(frameDocument, "address", record.address);
+      setFrameField(frameDocument, "projectName", record.project_name);
+      setFrameField(frameDocument, "billTo", record.bill_to);
+      setFrameField(frameDocument, "shipTo", record.ship_to);
+      setFrameField(frameDocument, "businessName", record.business_name);
+      setFrameField(frameDocument, "businessContact", record.business_contact);
+      setFrameField(frameDocument, "businessEmail", record.business_email);
+
+      const itemInputs = frameDocument.getElementById("itemInputs");
+      itemInputs.innerHTML = "";
+      const savedItems = Array.isArray(record.items) && record.items.length ? record.items : [{}];
+      while (itemInputs.children.length < savedItems.length) frameWindow.addItemRow();
+      [...itemInputs.querySelectorAll(".item-row")].forEach((row, index) => {
+        const item = savedItems[index] || {};
+        row.querySelector('[data-key="item"]').value = item.item || "";
+        row.querySelector('[data-key="description"]').value = item.description || "";
+        row.querySelector('[data-key="material"]').value = item.material || "";
+        row.querySelector('[data-key="qty"]').value = item.qty || "";
+        row.querySelector('[data-key="price"]').value = item.price || "";
+      });
+
+      const termsInputs = frameDocument.getElementById("termsInputs");
+      termsInputs.innerHTML = "";
+      (Array.isArray(record.terms) ? record.terms : []).forEach((term) => frameWindow.addTermSection(term.header || "", term.details || ""));
+      setFrameImageSlots(frameWindow, record.images);
+      setFramePaymentEntries(frameDocument, record.payments);
+      frameWindow.render();
+
+      const images = [...frameDocument.querySelectorAll("#paper img")];
+      await Promise.all(images.map((image) => image.complete
+        ? Promise.resolve()
+        : new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once:true });
+          image.addEventListener("error", resolve, { once:true });
+        })));
+      return { frame, frameWindow };
+    }
     async function generateQuotationPdf(record) {
       if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export is unavailable.");
-      const pdf = new window.jspdf.jsPDF({ unit:"mm", format:"a4" });
-      const left = 16;
-      let y = 18;
-      const line = (text, size = 10, bold = false) => {
-        pdf.setFont("helvetica", bold ? "bold" : "normal");
-        pdf.setFontSize(size);
-        pdf.text(String(text || ""), left, y);
-        y += size * .55 + 3;
-      };
-      pdf.setFillColor(23, 35, 44);
-      pdf.rect(0, 0, 210, 34, "F");
-      pdf.setTextColor(255, 255, 255);
-      line("PINOYPROTO 3D", 16, true);
-      line("QUOTATION", 12, true);
-      pdf.setTextColor(17, 17, 17);
-      y = 45;
-      line(`Quotation no.: ${record.quotation_number}`, 11, true);
-      line(`Date: ${record.quotation_date || ""}`);
-      line(`Customer: ${record.customer_name || ""}`);
-      line(`Contact: ${record.contact || ""}`);
-      line(`Address: ${record.address || ""}`);
-      y += 3;
-      line(`Project: ${record.project_name || ""}`, 12, true);
-      line(`Bill to: ${record.bill_to || ""}`);
-      line(`Ship to: ${record.ship_to || ""}`);
-      y += 4;
-      pdf.setFillColor(23, 35, 44);
-      pdf.rect(left, y - 5, 178, 8, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.text("ITEM", left + 2, y);
-      pdf.text("DESCRIPTION", left + 42, y);
-      pdf.text("MATERIAL", left + 94, y);
-      pdf.text("QTY", left + 132, y);
-      pdf.text("UNIT PRICE", left + 150, y);
-      y += 8;
-      pdf.setTextColor(17, 17, 17);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-      let total = 0;
-      (record.items || []).forEach((item) => {
-        const amount = Number(item.qty || 0) * Number(item.price || 0);
-        total += amount;
-        const values = [item.item, item.description, item.material, item.qty, money(item.price)];
-        [left + 2, left + 42, left + 94, left + 132, left + 150].forEach((x, index) => pdf.text(String(values[index] || "").slice(0, 26), x, y));
-        pdf.line(left, y + 2, left + 178, y + 2);
-        y += 7;
-      });
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`GRAND TOTAL: ${money(total)}`, left + 112, y + 5);
-      y += 18;
-      line("Terms & Conditions", 11, true);
-      (record.terms || []).forEach((term) => line(`${term.header}: ${term.details}`, 8));
-      line("Payment Methods", 11, true);
-      (record.payments || []).forEach((payment) => line(payment.name, 8));
-      await savePdf(pdf, record);
+      const { frame, frameWindow } = await createQuotationMakerFrame(record);
+      try {
+        const canvas = await frameWindow.createPaperImage();
+        const pdf = new window.jspdf.jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+        await savePdf(pdf, record);
+      } finally {
+        frame.remove();
+      }
     }
     function renderRecords() {
       const query = searchInput.value.trim().toLowerCase();
