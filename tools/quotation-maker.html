@@ -9,18 +9,18 @@
     * { box-sizing:border-box; }
     html { min-width:320px; }
     body { margin:0; min-height:100vh; min-height:100dvh; overflow-x:hidden; color:var(--ink); background:radial-gradient(circle at 85% 4%, rgba(255,114,0,.13), transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
-    .app { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:100vh; min-height:100dvh; }
-    nav { padding:28px 16px; border-right:1px solid var(--line); background:var(--panel-2); }
+    .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; min-height:100dvh; }
+    nav { padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-weight:700; text-decoration:none; }
     .back:hover,.back:focus-visible { color:var(--orange); }
     .nav-label { margin:0 8px 9px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
-    .tool-link { display:block; padding:12px; border:1px solid transparent; border-radius:9px; color:var(--ink); text-decoration:none; line-height:1.35; }
-    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; }
+    .tool-link { display:block; padding:12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; transition:.2s ease; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; transform:translateX(2px); }
     main { display:grid; grid-template-columns:minmax(280px,30%) minmax(0,1fr); gap:clamp(16px,2vw,24px); min-width:0; align-items:start; padding:clamp(16px,3vw,30px); }
     h1 { margin:0 0 18px; font-size:30px; letter-spacing:-.04em; }
     .controls { max-height:calc(100vh - 60px); overflow:auto; padding-right:4px; }
-    .panel { padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+    .panel { padding:18px; border:1px solid var(--line); border-radius:18px; background:rgba(21,29,39,.86); box-shadow:0 24px 70px rgba(0,0,0,.28); }
     .section { margin-bottom:18px; }
     .section h2 { margin:0 0 10px; font-size:14px; }
     .fields { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
@@ -57,6 +57,8 @@
     .preview-actions button:disabled { opacity:.4; cursor:not-allowed; }
     .preview-actions .secondary { background:#2a3848; }
     .preview-actions .secondary:hover:not(:disabled) { background:#35485c; }
+    .preview-actions .record-button { background:#176b4d; }
+    .preview-actions .record-button:hover:not(:disabled) { background:#21865f; }
     .export-status { min-height:20px; margin:10px 3px 0; color:var(--muted); font-size:12px; }
     .export-status.error { color:#ff9a9a; }
     .export-status.success { color:#8ee0a4; }
@@ -176,6 +178,7 @@
         <div class="preview-actions">
           <button id="copyImageButton" type="button">Copy image</button>
           <button class="secondary" id="downloadPdfButton" type="button">Download PDF</button>
+          <button class="record-button" id="addRecordButton" type="button">Add to record</button>
         </div>
         <p class="export-status" id="exportStatus" aria-live="polite"></p>
       </section>
@@ -183,6 +186,7 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const fields = {};
     document.querySelectorAll("[data-field]").forEach((input) => { fields[input.dataset.field] = input; input.addEventListener("input", render); });
@@ -283,12 +287,125 @@
     const copyImageButton = document.getElementById("copyImageButton");
     const downloadPdfButton = document.getElementById("downloadPdfButton");
     const exportStatus = document.getElementById("exportStatus");
+    const addRecordButton = document.getElementById("addRecordButton");
     const A4_EXPORT_WIDTH = 794;
     const A4_EXPORT_HEIGHT = 1123;
+    const SUPABASE_URL = "https://cifxwhhdkmecgomwesnk.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     function setExportStatus(message, type = "") {
       exportStatus.textContent = message;
       exportStatus.className = `export-status ${type}`.trim();
+    }
+
+    function getLocalDate() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${now.getFullYear()}-${month}-${day}`;
+    }
+
+    function fileSourceToDataUrl(source) {
+      if (!source || source.startsWith("data:") || !source.startsWith("blob:")) return Promise.resolve(source);
+      return fetch(source).then((response) => {
+        if (!response.ok) throw new Error("Could not read an attached image.");
+        return response.blob();
+      }).then((blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Could not store an attached image."));
+        reader.readAsDataURL(blob);
+      }));
+    }
+
+    async function getNextQuotationNumber(year = new Date().getFullYear()) {
+      const { data, error } = await supabaseClient
+        .from("quotations")
+        .select("quotation_number")
+        .like("quotation_number", `${year}-%`)
+        .order("quotation_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(`Could not read quotation numbers: ${error.message}`);
+      const highest = data ? Number(data.quotation_number.slice(5)) : 0;
+      return `${year}-${String(highest + 1).padStart(5, "0")}`;
+    }
+
+    async function initializeQuotationDetails() {
+      try {
+        if (!value("quoteNo")) fields.quoteNo.value = await getNextQuotationNumber();
+        if (!value("date")) fields.date.value = getLocalDate();
+        render();
+      } catch (error) {
+        setExportStatus(error.message, "error");
+        render();
+      }
+    }
+
+    async function collectRecord() {
+      const projectName = value("projectName").trim();
+      if (!projectName) throw new Error("Enter a project name before adding a record.");
+      const { data: matchingRecords, error: matchingError } = await supabaseClient
+        .from("quotations")
+        .select("id, quotation_number")
+        .ilike("project_name", projectName)
+        .limit(1);
+      if (matchingError) throw new Error(`Could not check existing records: ${matchingError.message}`);
+      const matchingRecord = matchingRecords[0];
+      let quotationNumber = value("quoteNo").trim();
+      if (!quotationNumber) quotationNumber = await getNextQuotationNumber();
+
+      const items = [...document.querySelectorAll(".item-row")].map((row) => ({
+        item: row.querySelector('[data-key="item"]').value,
+        description: row.querySelector('[data-key="description"]').value,
+        material: row.querySelector('[data-key="material"]').value,
+        qty: row.querySelector('[data-key="qty"]').value,
+        price: row.querySelector('[data-key="price"]').value
+      }));
+      const terms = [...document.querySelectorAll(".term-entry")].map((entry) => ({
+        header: entry.querySelector('[data-part="header"]').value,
+        details: entry.querySelector('[data-part="details"]').value
+      }));
+      const payments = await Promise.all([...document.querySelectorAll(".payment-entry")].map(async (entry) => ({
+        name: entry.querySelector("[data-payment-name]").value,
+        source: await fileSourceToDataUrl(entry.querySelector("[data-payment-image]").src)
+      })));
+      const images = await Promise.all([...document.querySelectorAll("#slotInputs img")].map((image) => fileSourceToDataUrl(image.src)));
+      const record = {
+        id: matchingRecord ? matchingRecord.id : undefined,
+        quotation_number: quotationNumber,
+        project_name: projectName,
+        quotation_year: Number(quotationNumber.slice(0, 4)),
+        quotation_date: value("date") || getLocalDate(),
+        customer_name: value("customerName"),
+        contact: value("contact"),
+        address: value("address"),
+        bill_to: value("billTo"),
+        ship_to: value("shipTo"),
+        business_name: value("businessName"),
+        business_contact: value("businessContact"),
+        business_email: value("businessEmail"),
+        items,
+        terms,
+        payments,
+        images,
+        updated_at: new Date().toISOString()
+      };
+
+      if (matchingRecord) {
+        const overwrite = window.confirm(`A quotation for "${projectName}" already exists.\n\nOK: overwrite the existing record\nCancel: add another record`);
+        if (!overwrite) {
+          delete record.id;
+          record.quotation_number = await getNextQuotationNumber();
+          record.quotation_year = Number(record.quotation_number.slice(0, 4));
+        }
+      }
+      const { error: saveError } = await supabaseClient.from("quotations").upsert(record);
+      if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
+      fields.quoteNo.value = record.quotation_number;
+      render();
+      setExportStatus(`Saved quotation ${record.quotation_number} online.`, "success");
     }
 
     async function createPaperImage() {
@@ -357,7 +474,18 @@
       }
     });
 
-    render();
+    addRecordButton.addEventListener("click", async () => {
+      addRecordButton.disabled = true;
+      try {
+        await collectRecord();
+      } catch (error) {
+        setExportStatus(error.message || "Could not save this quotation record.", "error");
+      } finally {
+        addRecordButton.disabled = false;
+      }
+    });
+
+    initializeQuotationDetails();
   </script>
 </body>
 </html>
