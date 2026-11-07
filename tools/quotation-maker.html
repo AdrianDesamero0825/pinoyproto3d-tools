@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinoyProto 3D - Quotation Maker</title>
+  <style>
+    :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --panel-2:#111a24; --line:#2b3a4b; --orange:#ff7200; --paper:#fff; --gold:#bd7a25; --dark:#17232c; }
+    * { box-sizing:border-box; }
+    html { min-width:320px; }
+    body { margin:0; min-height:100vh; min-height:100dvh; overflow-x:hidden; color:var(--ink); background:radial-gradient(circle at 85% 4%, rgba(255,114,0,.13), transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .app { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:100vh; min-height:100dvh; }
+    nav { padding:28px 16px; border-right:1px solid var(--line); background:var(--panel-2); }
+    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-weight:700; text-decoration:none; }
+    .back:hover,.back:focus-visible { color:var(--orange); }
+    .nav-label { margin:0 8px 9px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .tool-link { display:block; padding:12px; border:1px solid transparent; border-radius:9px; color:var(--ink); text-decoration:none; line-height:1.35; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; }
+    main { display:grid; grid-template-columns:minmax(280px,30%) minmax(0,1fr); gap:clamp(16px,2vw,24px); min-width:0; align-items:start; padding:clamp(16px,3vw,30px); }
+    h1 { margin:0 0 18px; font-size:30px; letter-spacing:-.04em; }
+    .controls { max-height:calc(100vh - 60px); overflow:auto; padding-right:4px; }
+    .panel { padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+    .section { margin-bottom:18px; }
+    .section h2 { margin:0 0 10px; font-size:14px; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    label { display:grid; gap:4px; color:#dbe5ef; font-size:12px; font-weight:700; }
+    label.full { grid-column:1/-1; }
+    input { width:100%; min-width:0; padding:9px 10px; border:1px solid #516276; border-radius:7px; color:var(--ink); background:#111a24; font:inherit; }
+    input:focus { border-color:var(--orange); outline:2px solid rgba(255,114,0,.2); }
+    textarea { width:100%; min-height:70px; resize:vertical; padding:9px 10px; border:1px solid #516276; border-radius:7px; color:var(--ink); background:#111a24; font:inherit; }
+    textarea:focus { border-color:var(--orange); outline:2px solid rgba(255,114,0,.2); }
+    .terms-editor { display:grid; gap:9px; }
+    .term-entry { display:grid; gap:5px; padding:9px; border:1px solid var(--line); border-radius:8px; background:#111a24; }
+    .term-entry input, .term-entry textarea { background:#151d27; }
+    .add-term { margin-top:8px; }
+    .payment-editor { display:grid; gap:9px; }
+    .payment-entry { display:grid; gap:5px; padding:9px; border:1px solid var(--line); border-radius:8px; background:#111a24; }
+    .payment-entry input[type="file"] { padding:7px; color:var(--muted); font-size:12px; }
+    .payment-entry img { width:80px; height:80px; object-fit:contain; background:#fff; }
+    .payment-preview { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:9px; }
+    .payment-card { display:grid; gap:3px; justify-items:center; min-width:0; text-align:center; }
+    .payment-card img { width:100%; aspect-ratio:1; object-fit:contain; background:#fff; }
+    .payment-card strong { font-size:7px; }
+    .item-row { display:grid; grid-template-columns:1.25fr 1.7fr .8fr .55fr .85fr; gap:5px; margin-bottom:6px; }
+    .item-row input { padding:7px 6px; font-size:12px; }
+    .item-head { display:grid; grid-template-columns:1.25fr 1.7fr .8fr .55fr .85fr; gap:5px; margin-bottom:4px; color:var(--muted); font-size:10px; }
+    .slot-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+    .slot { position:relative; display:grid; place-items:center; min-height:65px; padding:7px; border:1px dashed #647386; border-radius:7px; color:var(--muted); text-align:center; font-size:11px; cursor:pointer; }
+    .slot input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .slot img { max-width:100%; max-height:55px; object-fit:contain; }
+    .preview-wrap { position:sticky; top:30px; }
+    .preview-title { margin:0 0 10px; color:var(--muted); font-size:12px; font-weight:800; }
+    .paper { display:flex; width:100%; max-width:none; flex-direction:column; aspect-ratio:210/297; overflow:hidden; color:#111; background:var(--paper); box-shadow:0 18px 50px #0008; }
+    .paper-header { position:relative; padding:18px 28px 16px; color:#fff; background:linear-gradient(90deg,rgba(8,16,23,.94),rgba(8,16,23,.68)),url("../assets/images/quotation-cover.png") center/cover; border-bottom:2px solid var(--gold); }
+    .paper-header > * { position:relative; z-index:1; }
+    .logo-line { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+    .logo-image { width:132px; height:58px; object-fit:contain; object-position:left center; border-radius:6px; }
+    .logo-word { font-size:28px; font-weight:900; letter-spacing:-.05em; text-shadow:0 2px 6px #000; }
+    .logo-word span { color:#e87813; }
+    .meta { display:grid; grid-template-columns:1fr 1fr; gap:5px 25px; font-size:10px; font-weight:800; }
+    .meta div { border-bottom:1px solid #fff; min-height:18px; }
+    .meta .wide { grid-column:1/-1; }
+    .paper-body { display:flex; flex:1; min-height:0; flex-direction:column; padding:13px 28px; }
+    .paper h2 { margin:0 0 8px; font-size:17px; }
+    .project-meta { display:grid; grid-template-columns:1fr 1fr; gap:5px 30px; margin-bottom:17px; font-size:10px; font-weight:800; }
+    .project-meta div { border-bottom:1px solid #222; min-height:18px; }
+    .quote-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:9px; }
+    .quote-table th { color:#fff; background:var(--dark); }
+    .quote-table th,.quote-table td { height:var(--row-height,25px); padding:var(--row-padding,4px); border:1px solid var(--gold); text-align:left; overflow:hidden; }
+    .quote-table th { text-align:center; }
+    .quote-table .total-label { background:#f6b366; font-weight:900; text-align:center; }
+    .quote-table .total { background:#f6b366; font-weight:900; }
+    .lower { display:grid; grid-template-columns:1fr 1.1fr; gap:20px; flex:1; min-height:0; margin-top:10px; align-items:stretch; overflow:hidden; }
+    .terms h3 { margin:0 0 5px; font-size:12px; }
+    .terms p { margin:5px 0; font-size:var(--terms-size,8px); }
+    .renders { display:grid; grid-template-columns:repeat(var(--image-columns, 1),minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); gap:8px; min-width:0; min-height:0; height:100%; align-content:stretch; }
+    .render { display:grid; place-items:center; min-width:0; min-height:0; overflow:hidden; border:1px solid #aaa; color:#222; text-align:center; font-size:8px; }
+    .render img { display:block; width:100%; height:100%; object-fit:contain; object-position:center; }
+    .add-item { margin-top:8px; padding:8px 11px; border:1px solid rgba(255,114,0,.55); border-radius:7px; color:#fff; background:rgba(255,114,0,.16); font:inherit; font-weight:800; cursor:pointer; }
+    .add-item:hover,.add-item:focus-visible { background:rgba(255,114,0,.3); outline:2px solid rgba(255,114,0,.25); }
+    .add-image { margin-top:8px; }
+    .paper-footer { flex-shrink:0; padding:8px 12px; color:#fff; background:var(--dark); text-align:center; }
+    .paper-footer strong { display:block; font-size:16px; font-weight:900; }
+    .business-info { margin-top:3px; font-size:8px; font-weight:500; }
+    @media (max-width:1100px) { .app{grid-template-columns:190px minmax(0,1fr)} main{grid-template-columns:minmax(270px,32%) minmax(0,1fr)} }
+    @media (max-width:900px) { .app{grid-template-columns:190px 1fr} main{grid-template-columns:1fr;padding:22px}.preview-wrap{position:static;max-width:760px}.controls{max-height:none}.paper{margin-inline:auto} }
+    @media (max-width:600px) {
+      .app{display:block}
+      .app nav{display:flex;align-items:center;gap:8px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px 12px}
+      .brand{flex:0 0 auto;margin:0 8px 0 0;font-size:11px}
+      .back{flex:0 0 auto;margin:0 8px 0 0;white-space:nowrap}
+      .nav-label{display:none}
+      .tool-link{flex:0 0 auto;padding:10px;font-size:12px;white-space:nowrap}
+      main{padding:14px 10px}
+      .fields{grid-template-columns:1fr}
+      .item-head{display:none}
+      .item-row{grid-template-columns:1fr 1fr;gap:7px}
+      .item-row input:nth-child(2){grid-column:1/-1}
+      .item-row input{min-height:40px}
+      .paper-body,.paper-header{padding-left:12px;padding-right:12px}
+      .paper-header{padding-top:12px;padding-bottom:12px}
+      .logo-line{gap:8px;margin-bottom:9px}
+      .logo-image{width:98px;height:44px}
+      .logo-word{font-size:clamp(18px,7vw,28px)}
+      .meta{gap:4px 10px;font-size:8px}
+      .paper h2{font-size:13px}
+      .project-meta{gap:4px 12px;margin-bottom:10px;font-size:8px}
+      .quote-table{font-size:7px}
+      .quote-table th,.quote-table td{padding:2px}
+      .lower{grid-template-columns:1fr .95fr;gap:8px}
+      .terms h3{font-size:9px}
+      .terms p{margin:3px 0}
+      .paper-footer{padding:5px 8px}
+      .paper-footer strong{font-size:10px}
+      .business-info{font-size:6px}
+    }
+    @media (max-width:380px) {
+      main{padding-inline:6px}
+      .panel{padding:12px}
+      .lower{grid-template-columns:1fr .85fr}
+      .paper-body,.paper-header{padding-left:8px;padding-right:8px}
+      .quote-table{font-size:6px}
+      .paper-footer strong{font-size:8px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <a class="back" href="../index.html">← Return to home</a>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link active" href="quotation-maker.html">Quotation Maker</a>
+    </nav>
+    <main>
+      <section class="controls">
+        <h1>Quotation Maker</h1>
+        <div class="panel">
+          <div class="section"><h2>Quotation details</h2><div class="fields">
+            <label>Quotation no.<input data-field="quoteNo"></label><label>Date<input data-field="date" type="date"></label>
+            <label>Customer name<input data-field="customerName"></label><label>Contact no.<input data-field="contact"></label>
+            <label class="full">Address<input data-field="address"></label>
+          </div></div>
+          <div class="section"><h2>Project details</h2><div class="fields">
+            <label>Project name<input data-field="projectName"></label><label>Bill to<input data-field="billTo"></label><label class="full">Ship to<input data-field="shipTo"></label>
+          </div></div>
+          <div class="section"><h2>Items</h2>
+            <div class="item-head"><span>Item</span><span>Description</span><span>Material</span><span>Qty</span><span>Unit price</span></div>
+            <div id="itemInputs"></div>
+            <button class="add-item" id="addItemButton" type="button">Add item</button>
+          </div>
+          <div class="section"><h2>Terms &amp; Conditions</h2><div class="terms-editor" id="termsInputs"></div><button class="add-item add-term" id="addTermButton" type="button">Add section</button></div>
+          <div class="section"><h2>Payment information</h2><div class="payment-editor" id="paymentInputs"></div></div>
+          <div class="section"><h2>Attach renders / images</h2><div class="slot-grid" id="slotInputs"></div><button class="add-item add-image" id="addImageButton" type="button">Add image</button></div>
+          <div class="section"><h2>Business information</h2><div class="fields">
+            <label class="full">Business name<input data-field="businessName" value="PinoyProto3D"></label>
+            <label class="full">Contact number<input data-field="businessContact" value="09651849533"></label>
+            <label class="full">Email address<input data-field="businessEmail" type="email" value="adriandesamero25@gmail.com"></label>
+          </div></div>
+        </div>
+      </section>
+      <section class="preview-wrap"><p class="preview-title">Live preview</p><div class="paper" id="paper"></div></section>
+    </main>
+  </div>
+  <script>
+    const fields = {};
+    document.querySelectorAll("[data-field]").forEach((input) => { fields[input.dataset.field] = input; input.addEventListener("input", render); });
+    const itemInputs = document.getElementById("itemInputs");
+    const slotInputs = document.getElementById("slotInputs");
+    const termsInputs = document.getElementById("termsInputs");
+    const paymentInputs = document.getElementById("paymentInputs");
+    let imageCount = 0;
+    let itemCount = 0;
+    let termCount = 0;
+    const defaultPayments = [
+      ["BDO", "../assets/qr-codes/bdo.jpg"],
+      ["BPI", "../assets/qr-codes/bpi.jpg"],
+      ["GCASH", "../assets/qr-codes/gcash.jpg"]
+    ];
+    const defaultTerms = [
+      ["Down Payment", "• 50% upfront payment is required for custom or bulk orders.\n• Balance to be paid before release or delivery."],
+      ["Full Payment", "• For single or low-cost jobs under ₱500, full payment is preferred."],
+      ["Payment Methods", "• Digital Bank (GCash, Gotyme, Maya) | Online Bank Transfer (BPI & BDO)"],
+      ["Rush Orders", "• Additional fees may apply for rush printing."],
+      ["No Refunds", "• Once the print has started, payments are non-refundable.\n• For errors in client-submitted files, reprinting costs apply."]
+    ];
+    function addItemRow() {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = `<input data-item="${itemCount}" data-key="item" aria-label="Item"><input data-item="${itemCount}" data-key="description" aria-label="Description"><input data-item="${itemCount}" data-key="material" aria-label="Material"><input data-item="${itemCount}" data-key="qty" type="number" min="0" aria-label="Quantity"><input data-item="${itemCount}" data-key="price" type="number" min="0" step="0.01" aria-label="Unit price">`;
+      row.addEventListener("input", render);
+      itemInputs.append(row);
+      itemCount++;
+    }
+    addItemRow();
+    document.getElementById("addItemButton").addEventListener("click", () => { addItemRow(); render(); });
+    function addImageSlot() {
+      const label = document.createElement("label"); label.className = "slot"; label.innerHTML = `<span>Attach render<br>/ image</span><input type="file" accept="image/*" aria-label="Attach render or image">`;
+      label.querySelector("input").addEventListener("change", (event) => { const file=event.target.files[0]; if (!file) return; const image=document.createElement("img"); image.src=URL.createObjectURL(file); label.replaceChildren(image,event.target); render(); }); slotInputs.append(label); imageCount++;
+    }
+    addImageSlot();
+    document.getElementById("addImageButton").addEventListener("click", () => { addImageSlot(); render(); });
+    itemInputs.addEventListener("input", render);
+    function addTermSection(header = "", details = "") {
+      const entry = document.createElement("div");
+      entry.className = "term-entry";
+      entry.innerHTML = `<input type="text" data-term="${termCount}" data-part="header" aria-label="Terms header" placeholder="Header"><textarea data-term="${termCount}" data-part="details" aria-label="Terms details" placeholder="Details"></textarea>`;
+      entry.querySelector('[data-part="header"]').value = header;
+      entry.querySelector('[data-part="details"]').value = details;
+      entry.addEventListener("input", render);
+      termsInputs.append(entry);
+      termCount++;
+    }
+    defaultTerms.forEach(([header, details]) => addTermSection(header, details));
+    document.getElementById("addTermButton").addEventListener("click", () => { addTermSection(); render(); });
+    function addPaymentEntry(name, source) {
+      const entry = document.createElement("div");
+      entry.className = "payment-entry";
+      entry.innerHTML = `<input type="text" data-payment-name aria-label="Payment method" value="${name}"><img data-payment-image src="${source}" alt="${name} QR code"><input type="file" accept="image/*" aria-label="Replace ${name} QR code">`;
+      entry.querySelector("input[type='file']").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        entry.querySelector("[data-payment-image]").src = URL.createObjectURL(file);
+        render();
+      });
+      entry.addEventListener("input", render);
+      paymentInputs.append(entry);
+    }
+    defaultPayments.forEach(([name, source]) => addPaymentEntry(name, source));
+    const value = (name) => fields[name] ? fields[name].value || "" : "";
+    const money = (number) => Number(number || 0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const escapeHtml = (text) => text.replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
+    function render() {
+      let total=0; const rows=[...document.querySelectorAll(".item-row")].map((row) => { const price=Number(row.querySelector('[data-key="price"]').value||0); const qty=Number(row.querySelector('[data-key="qty"]').value||0); total+=price*qty; return { item:row.querySelector('[data-key="item"]').value, description:row.querySelector('[data-key="description"]').value, material:row.querySelector('[data-key="material"]').value, qty, price }; });
+      const cells=rows.map((row) => `<tr><td>${row.item}</td><td>${row.description}</td><td>${row.material}</td><td>${row.qty||""}</td><td>${row.price?money(row.price):""}</td><td>${row.price?money(row.price*row.qty):""}</td></tr>`).join("");
+      const slotImages=[...document.querySelectorAll("#slotInputs img")].map((img)=>`<div class="render"><img src="${img.src}" alt="Attached render"></div>`);
+      while(slotImages.length<imageCount) slotImages.push('<div class="render">ATTACH RENDER<br>/ IMAGE</div>');
+      const imageColumns = imageCount === 1 ? 1 : imageCount <= 4 ? 2 : 3;
+      const rowCount = rows.length;
+      const rowHeight = Math.max(14, 25 - Math.max(0, rowCount - 3) * 1.4);
+      const rowPadding = rowCount > 8 ? 2 : rowCount > 5 ? 3 : 4;
+      const termsSize = Math.max(5.5, 8 - Math.max(0, rowCount - 5) * 0.35);
+      const terms = [...document.querySelectorAll(".term-entry")].map((entry) => {
+        const header = escapeHtml(entry.querySelector('[data-part="header"]').value.trim());
+        const details = escapeHtml(entry.querySelector('[data-part="details"]').value).replace(/\r?\n/g, "<br>");
+        return `<p><strong>${header}</strong><br>${details}</p>`;
+      }).join("");
+      const payments = [...document.querySelectorAll(".payment-entry")].map((entry) => ({
+        name: escapeHtml(entry.querySelector("[data-payment-name]").value.trim()),
+        source: entry.querySelector("[data-payment-image]").src
+      }));
+      const paymentCards = payments.map((payment) => `<div class="payment-card"><img src="${payment.source}" alt="${payment.name} QR code"><strong>${payment.name}</strong></div>`).join("");
+      document.getElementById("paper").style.setProperty("--row-height", `${rowHeight}px`);
+      document.getElementById("paper").style.setProperty("--row-padding", `${rowPadding}px`);
+      document.getElementById("paper").style.setProperty("--terms-size", `${termsSize}px`);
+      const businessName = escapeHtml(value("businessName"));
+      const businessContact = escapeHtml(value("businessContact"));
+      const businessEmail = escapeHtml(value("businessEmail"));
+      document.getElementById("paper").innerHTML = `<div class="paper-header"><div class="logo-line"><img class="logo-image" src="../assets/images/pinoyproto3d-logo.webp" alt="PinoyProto 3D logo"><div class="logo-word">QUOTATION</div></div><div class="meta"><div>QUOTATION NO.: ${value("quoteNo")}</div><div>DATE: ${value("date")}</div><div>CUSTOMER NAME: ${value("customerName")}</div><div>CONTACT NO.: ${value("contact")}</div><div class="wide">ADDRESS: ${value("address")}</div></div></div><div class="paper-body"><h2>PROJECT DETAILS</h2><div class="project-meta"><div>PROJECT NAME: ${value("projectName")}</div><div>BILL TO: ${value("billTo")}</div><div>SHIP TO: ${value("shipTo")}</div></div><table class="quote-table"><thead><tr><th>ITEM</th><th>DESCRIPTION</th><th>MATERIAL</th><th>QTY</th><th>UNIT PRICE</th><th>TOTAL PRICE</th></tr></thead><tbody>${cells}</tbody><tfoot><tr><td colspan="4"></td><td class="total-label">GRAND TOTAL</td><td class="total">${money(total)}</td></tr></tfoot></table><div class="lower"><div class="terms"><h3>Terms &amp; Conditions:</h3><div>${terms}</div><h3>Payment Information:</h3><div class="payment-preview">${paymentCards}</div></div><div class="renders" style="--image-columns:${imageColumns}">${slotImages.join("")}</div></div></div><div class="paper-footer"><strong>THANK YOU FOR YOUR TRUST!</strong><div class="business-info">${businessName} | ${businessContact} | ${businessEmail}</div></div>`;
+    }
+    render();
+  </script>
+</body>
+</html>
