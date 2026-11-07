@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PinoyProto 3D - Quotation Maker</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <style>
     :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --panel-2:#111a24; --line:#2b3a4b; --orange:#ff7200; --paper:#fff; --gold:#bd7a25; --dark:#17232c; }
     * { box-sizing:border-box; }
@@ -356,7 +358,7 @@
         .limit(1);
       if (matchingError) throw new Error(`Could not check existing records: ${matchingError.message}`);
       const matchingRecord = matchingRecords[0];
-      let quotationNumber = value("quoteNo").trim();
+      let quotationNumber = matchingRecord ? matchingRecord.quotation_number : value("quoteNo").trim();
       if (!quotationNumber) quotationNumber = await getNextQuotationNumber();
 
       const items = [...document.querySelectorAll(".item-row")].map((row) => ({
