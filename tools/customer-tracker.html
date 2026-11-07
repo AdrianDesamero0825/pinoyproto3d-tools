@@ -27,6 +27,10 @@
     .workspace { display:grid; grid-template-columns:minmax(280px,340px) minmax(0,1fr); gap:18px; align-items:start; }
     .panel,.tracker-card { border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); }
     .panel { padding:18px; }
+    .auth-panel { margin-bottom:18px; }
+    .auth-panel form { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .auth-panel input { flex:1 1 190px; }
+    .admin-user { margin-right:10px; color:var(--green); font-size:12px; font-weight:700; }
     .panel h2 { margin:0 0 16px; font-size:16px; }
     form { display:grid; gap:11px; }
     label { display:grid; gap:5px; color:#dbe5ef; font-size:12px; font-weight:700; }
@@ -102,8 +106,18 @@
     </nav>
     <main>
       <div class="page-heading"><div><h1>Customer Tracker</h1><p class="intro">Track every customer project from inquiry to completion.</p></div><div class="date-note">Saved in Supabase</div></div>
+      <section class="panel auth-panel" aria-label="Admin login">
+        <h2>Admin access</h2>
+        <form id="loginForm">
+          <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
+          <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
+          <button type="submit">Log in</button>
+        </form>
+        <span class="admin-user" id="adminUser" hidden></span>
+        <button class="secondary" id="logoutButton" type="button" hidden>Log out</button>
+      </section>
       <div class="workspace">
-        <section class="panel" aria-label="Add customer tracker">
+        <section class="panel" id="trackerEditor" aria-label="Add customer tracker">
           <h2 id="formTitle">Add customer progress</h2>
           <form id="trackerForm">
             <label>Customer name<input id="customerInput" required placeholder="e.g. Adrian Santos"></label>
@@ -150,9 +164,16 @@
     const formTitle = document.getElementById("formTitle");
     const saveButton = document.getElementById("saveButton");
     const cancelButton = document.getElementById("cancelButton");
+    const trackerEditor = document.getElementById("trackerEditor");
+    const loginForm = document.getElementById("loginForm");
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const adminUser = document.getElementById("adminUser");
+    const logoutButton = document.getElementById("logoutButton");
     let trackers = [];
     let editingId = null;
     let editingModelFile = null;
+    let session = null;
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
     const normalizeMatch = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
     const quotationTotal = (quotation) => (quotation.items || []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
@@ -180,7 +201,6 @@
       const { data: quotations, error: quotationError } = await supabaseClient
         .from("quotations")
         .select("id, tracker_id, quotation_number, quotation_date, customer_name, project_name, items")
-        .not("tracker_id", "is", null)
         .order("quotation_date", { ascending:false });
       if (quotationError) {
         statusElement.textContent = `Could not load linked quotations: ${quotationError.message}`;
@@ -188,10 +208,21 @@
         return;
       }
       const latestQuotation = new Map();
+      const latestQuotationByMatch = new Map();
       (quotations || []).forEach((quotation) => {
-        if (!latestQuotation.has(quotation.tracker_id)) latestQuotation.set(quotation.tracker_id, quotation);
+        if (quotation.tracker_id && !latestQuotation.has(quotation.tracker_id)) {
+          latestQuotation.set(quotation.tracker_id, quotation);
+        }
+        const matchKey = `${normalizeMatch(quotation.customer_name)}|${normalizeMatch(quotation.project_name)}`;
+        if (!latestQuotationByMatch.has(matchKey)) latestQuotationByMatch.set(matchKey, quotation);
       });
-      trackers = (data || []).map((row) => trackerFromRow({ ...row, quotation: latestQuotation.get(row.id) || null }));
+      trackers = (data || []).map((row) => {
+        const matchKey = `${normalizeMatch(row.customer_name)}|${normalizeMatch(row.project_name)}`;
+        return trackerFromRow({
+          ...row,
+          quotation: latestQuotation.get(row.id) || latestQuotationByMatch.get(matchKey) || null
+        });
+      });
     }
     async function uploadModelFile(file, project) {
       if (!file) return null;
@@ -216,6 +247,18 @@
     function setDriveStatus(message, type = "") {
       driveStatus.textContent = message;
       driveStatus.className = `drive-status${type ? ` ${type}` : ""}`;
+    }
+    function setAdminState(nextSession) {
+      session = nextSession;
+      const loggedIn = Boolean(session);
+      [...trackerEditor.querySelectorAll("input, select, textarea, button")].forEach((control) => {
+        control.disabled = !loggedIn;
+      });
+      loginForm.hidden = loggedIn;
+      adminUser.hidden = !loggedIn;
+      logoutButton.hidden = !loggedIn;
+      adminUser.textContent = loggedIn ? `Logged in as ${session.user.email}` : "";
+      if (!loggedIn) resetForm();
     }
     function showModelFileLink(modelFile) {
       modelFileLink.replaceChildren();
@@ -253,13 +296,17 @@
       trackersElement.innerHTML = filtered.map((tracker) => {
         const progress = stageProgress(tracker.stage);
         const modelFileLink = tracker.modelFile?.url ? `<div class="tracker-notes">Model file: <a href="${escapeHtml(tracker.modelFile.url)}" target="_blank" rel="noopener">${escapeHtml(tracker.modelFile.name || "Open model file")}</a></div>` : "";
-        const quotationInfo = tracker.quotation ? `<div class="tracker-notes">Latest quotation: <strong>${escapeHtml(tracker.quotation.quotation_number)}</strong> · ${escapeHtml(tracker.quotation.quotation_date || "No date")} · ${quotationTotal(tracker.quotation).toLocaleString("en-PH", { style:"currency", currency:"PHP" })}</div>` : "";
-        return `<article class="tracker-card"><details class="tracker-details"><summary class="tracker-summary"><div class="tracker-top"><div><h3>${escapeHtml(tracker.project)}</h3><div class="tracker-customer">${escapeHtml(tracker.customer)}</div></div><span class="status-badge">${escapeHtml(tracker.stage)}</span></div><div class="progress-row"><span>Project progress</span><span class="progress-value">${progress}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></summary><div class="tracker-expanded"><div class="tracker-meta"><span>${tracker.date ? `Target: ${escapeHtml(tracker.date)}` : "No target date"}</span><span>Updated: ${escapeHtml(new Date(tracker.updatedAt).toLocaleDateString("en-PH"))}</span></div>${quotationInfo}${modelFileLink}${tracker.notes ? `<div class="tracker-notes">${escapeHtml(tracker.notes)}</div>` : ""}<div class="tracker-actions"><button type="button" data-edit-id="${escapeHtml(tracker.id)}">Edit</button><button class="danger" type="button" data-delete-id="${escapeHtml(tracker.id)}">Delete</button></div></div></details></article>`;
+        const quotationInfo = tracker.quotation ? `<div class="tracker-notes">Saved quotation: <strong>${escapeHtml(tracker.quotation.quotation_number)}</strong> · ${escapeHtml(tracker.quotation.quotation_date || "No date")} · ${quotationTotal(tracker.quotation).toLocaleString("en-PH", { style:"currency", currency:"PHP" })}</div>` : "";
+        return `<article class="tracker-card"><details class="tracker-details"><summary class="tracker-summary"><div class="tracker-top"><div><h3>${escapeHtml(tracker.project)}</h3><div class="tracker-customer">${escapeHtml(tracker.customer)}</div></div><span class="status-badge">${escapeHtml(tracker.stage)}</span></div><div class="progress-row"><span>Project progress</span><span class="progress-value">${progress}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></summary><div class="tracker-expanded"><div class="tracker-meta"><span>${tracker.date ? `Target: ${escapeHtml(tracker.date)}` : "No target date"}</span><span>Updated: ${escapeHtml(new Date(tracker.updatedAt).toLocaleDateString("en-PH"))}</span></div>${modelFileLink}${quotationInfo}${tracker.notes ? `<div class="tracker-notes">${escapeHtml(tracker.notes)}</div>` : ""}<div class="tracker-actions"><button type="button" data-edit-id="${escapeHtml(tracker.id)}">Edit</button><button class="danger" type="button" data-delete-id="${escapeHtml(tracker.id)}">Delete</button></div></div></details></article>`;
       }).join("");
     }
     stageInput.addEventListener("change", updateProgressFromStage);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (!session) {
+        setDriveStatus("Log in as admin before saving a tracker.", "error");
+        return;
+      }
       saveButton.disabled = true;
       try {
         const uploadedFile = await uploadModelFile(modelFileInput.files[0], projectInput.value.trim());
@@ -295,6 +342,29 @@
       }
     });
     cancelButton.addEventListener("click", resetForm);
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email:emailInput.value.trim(), password:passwordInput.value });
+      if (error) {
+        statusElement.textContent = `Login failed: ${error.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      passwordInput.value = "";
+      setAdminState(data.session);
+      statusElement.textContent = "Admin access enabled.";
+      statusElement.className = "status";
+    });
+    logoutButton.addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        statusElement.textContent = `Could not log out: ${error.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      setAdminState(null);
+      statusElement.textContent = "Logged out. Tracker editing is locked.";
+    });
     searchInput.addEventListener("input", renderTrackers);
     trackersElement.addEventListener("click", async (event) => {
       const editButton = event.target.closest("[data-edit-id]");
@@ -332,6 +402,7 @@
         renderTrackers();
       }
     });
+    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
     (async () => {
       await loadTrackers();
       renderTrackers();

@@ -350,7 +350,8 @@
         .update({ tracker_id: tracker?.id || null })
         .eq("id", quotationId);
       if (quotationLinkError) throw new Error(`Could not link quotation to customer tracker: ${quotationLinkError.message}`);
-      if (tracker && ["Inquiry", "Quotation sent"].includes(tracker.stage)) {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      if (sessionData.session && tracker && ["Inquiry", "Quotation sent"].includes(tracker.stage)) {
         const { error: stageError } = await supabaseClient
           .from("customer_trackers")
           .update({ stage:"Quotation Sent", updated_at:new Date().toISOString() })
