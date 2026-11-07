@@ -51,11 +51,20 @@
     .slot img { max-width:100%; max-height:55px; object-fit:contain; }
     .preview-wrap { position:sticky; top:30px; }
     .preview-title { margin:0 0 10px; color:var(--muted); font-size:12px; font-weight:800; }
+    .preview-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
+    .preview-actions button { padding:13px 17px; border:0; border-radius:10px; color:#fff; background:var(--orange); font:inherit; font-weight:800; cursor:pointer; transition:transform .15s,background .15s,opacity .15s; }
+    .preview-actions button:hover:not(:disabled) { background:#d95100; transform:translateY(-1px); }
+    .preview-actions button:disabled { opacity:.4; cursor:not-allowed; }
+    .preview-actions .secondary { background:#2a3848; }
+    .preview-actions .secondary:hover:not(:disabled) { background:#35485c; }
+    .export-status { min-height:20px; margin:10px 3px 0; color:var(--muted); font-size:12px; }
+    .export-status.error { color:#ff9a9a; }
+    .export-status.success { color:#8ee0a4; }
     .paper { display:flex; width:100%; max-width:none; flex-direction:column; aspect-ratio:210/297; overflow:hidden; color:#111; background:var(--paper); box-shadow:0 18px 50px #0008; }
     .paper-header { position:relative; padding:18px 28px 16px; color:#fff; background:linear-gradient(90deg,rgba(8,16,23,.94),rgba(8,16,23,.68)),url("../assets/images/quotation-cover.png") center/cover; border-bottom:2px solid var(--gold); }
     .paper-header > * { position:relative; z-index:1; }
     .logo-line { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
-    .logo-image { width:132px; height:58px; object-fit:contain; object-position:left center; border-radius:6px; }
+    .logo-image { width:auto; height:auto; max-width:132px; max-height:58px; object-fit:contain; object-position:left center; border-radius:6px; }
     .logo-word { font-size:28px; font-weight:900; letter-spacing:-.05em; text-shadow:0 2px 6px #000; }
     .logo-word span { color:#e87813; }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:5px 25px; font-size:10px; font-weight:800; }
@@ -75,8 +84,8 @@
     .terms h3 { margin:0 0 5px; font-size:12px; }
     .terms p { margin:5px 0; font-size:var(--terms-size,8px); }
     .renders { display:grid; grid-template-columns:repeat(var(--image-columns, 1),minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); gap:8px; min-width:0; min-height:0; height:100%; align-content:stretch; }
-    .render { display:grid; place-items:center; min-width:0; min-height:0; overflow:hidden; border:1px solid #aaa; color:#222; text-align:center; font-size:8px; }
-    .render img { display:block; width:100%; height:100%; object-fit:contain; object-position:center; }
+    .render { display:grid; place-items:center; min-width:0; min-height:0; overflow:hidden; border:0; color:#222; text-align:center; font-size:8px; }
+    .render img { display:block; width:auto; height:auto; max-width:100%; max-height:100%; object-fit:contain; object-position:center; }
     .add-item { margin-top:8px; padding:8px 11px; border:1px solid rgba(255,114,0,.55); border-radius:7px; color:#fff; background:rgba(255,114,0,.16); font:inherit; font-weight:800; cursor:pointer; }
     .add-item:hover,.add-item:focus-visible { background:rgba(255,114,0,.3); outline:2px solid rgba(255,114,0,.25); }
     .add-image { margin-top:8px; }
@@ -101,7 +110,7 @@
       .paper-body,.paper-header{padding-left:12px;padding-right:12px}
       .paper-header{padding-top:12px;padding-bottom:12px}
       .logo-line{gap:8px;margin-bottom:9px}
-      .logo-image{width:98px;height:44px}
+      .logo-image{max-width:98px;max-height:44px}
       .logo-word{font-size:clamp(18px,7vw,28px)}
       .meta{gap:4px 10px;font-size:8px}
       .paper h2{font-size:13px}
@@ -152,8 +161,8 @@
             <button class="add-item" id="addItemButton" type="button">Add item</button>
           </div>
           <div class="section"><h2>Terms &amp; Conditions</h2><div class="terms-editor" id="termsInputs"></div><button class="add-item add-term" id="addTermButton" type="button">Add section</button></div>
-          <div class="section"><h2>Payment information</h2><div class="payment-editor" id="paymentInputs"></div></div>
           <div class="section"><h2>Attach renders / images</h2><div class="slot-grid" id="slotInputs"></div><button class="add-item add-image" id="addImageButton" type="button">Add image</button></div>
+          <div class="section"><h2>Payment information</h2><div class="payment-editor" id="paymentInputs"></div></div>
           <div class="section"><h2>Business information</h2><div class="fields">
             <label class="full">Business name<input data-field="businessName" value="PinoyProto3D"></label>
             <label class="full">Contact number<input data-field="businessContact" value="09651849533"></label>
@@ -161,9 +170,19 @@
           </div></div>
         </div>
       </section>
-      <section class="preview-wrap"><p class="preview-title">Live preview</p><div class="paper" id="paper"></div></section>
+      <section class="preview-wrap">
+        <p class="preview-title">Live preview</p>
+        <div class="paper" id="paper"></div>
+        <div class="preview-actions">
+          <button id="copyImageButton" type="button">Copy image</button>
+          <button class="secondary" id="downloadPdfButton" type="button">Download PDF</button>
+        </div>
+        <p class="export-status" id="exportStatus" aria-live="polite"></p>
+      </section>
     </main>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     const fields = {};
     document.querySelectorAll("[data-field]").forEach((input) => { fields[input.dataset.field] = input; input.addEventListener("input", render); });
@@ -260,6 +279,84 @@
       const businessEmail = escapeHtml(value("businessEmail"));
       document.getElementById("paper").innerHTML = `<div class="paper-header"><div class="logo-line"><img class="logo-image" src="../assets/images/pinoyproto3d-logo.webp" alt="PinoyProto 3D logo"><div class="logo-word">QUOTATION</div></div><div class="meta"><div>QUOTATION NO.: ${value("quoteNo")}</div><div>DATE: ${value("date")}</div><div>CUSTOMER NAME: ${value("customerName")}</div><div>CONTACT NO.: ${value("contact")}</div><div class="wide">ADDRESS: ${value("address")}</div></div></div><div class="paper-body"><h2>PROJECT DETAILS</h2><div class="project-meta"><div>PROJECT NAME: ${value("projectName")}</div><div>BILL TO: ${value("billTo")}</div><div>SHIP TO: ${value("shipTo")}</div></div><table class="quote-table"><thead><tr><th>ITEM</th><th>DESCRIPTION</th><th>MATERIAL</th><th>QTY</th><th>UNIT PRICE</th><th>TOTAL PRICE</th></tr></thead><tbody>${cells}</tbody><tfoot><tr><td colspan="4"></td><td class="total-label">GRAND TOTAL</td><td class="total">${money(total)}</td></tr></tfoot></table><div class="lower"><div class="terms"><h3>Terms &amp; Conditions:</h3><div>${terms}</div><h3>Payment Information:</h3><div class="payment-preview">${paymentCards}</div></div><div class="renders" style="--image-columns:${imageColumns}">${slotImages.join("")}</div></div></div><div class="paper-footer"><strong>THANK YOU FOR YOUR TRUST!</strong><div class="business-info">${businessName} | ${businessContact} | ${businessEmail}</div></div>`;
     }
+    const paper = document.getElementById("paper");
+    const copyImageButton = document.getElementById("copyImageButton");
+    const downloadPdfButton = document.getElementById("downloadPdfButton");
+    const exportStatus = document.getElementById("exportStatus");
+    const A4_EXPORT_WIDTH = 794;
+    const A4_EXPORT_HEIGHT = 1123;
+
+    function setExportStatus(message, type = "") {
+      exportStatus.textContent = message;
+      exportStatus.className = `export-status ${type}`.trim();
+    }
+
+    async function createPaperImage() {
+      if (typeof html2canvas !== "function") {
+        throw new Error("Image export is unavailable.");
+      }
+      return html2canvas(paper, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        width: A4_EXPORT_WIDTH,
+        height: A4_EXPORT_HEIGHT,
+        useCORS: true,
+        onclone: (documentClone) => {
+          const paperClone = documentClone.getElementById("paper");
+          paperClone.style.width = `${A4_EXPORT_WIDTH}px`;
+          paperClone.style.height = `${A4_EXPORT_HEIGHT}px`;
+          paperClone.style.maxWidth = "none";
+          paperClone.style.aspectRatio = "210 / 297";
+        }
+      });
+    }
+
+    copyImageButton.addEventListener("click", async () => {
+      try {
+        const canvas = await createPaperImage();
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Image export failed.")), "image/png");
+        });
+        if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+          throw new Error("Copy is unavailable in this browser.");
+        }
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        setExportStatus("Image copied.", "success");
+      } catch (error) {
+        setExportStatus(error.message || "Could not copy the quotation image.", "error");
+      }
+    });
+
+    downloadPdfButton.addEventListener("click", async () => {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error("PDF export is unavailable.");
+        }
+        const canvas = await createPaperImage();
+        const pdf = new window.jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+        const pdfBlob = pdf.output("blob");
+        const fileName = "pinoyproto3d-quotation.pdf";
+        if (window.showSaveFilePicker) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: "PDF document",
+              accept: { "application/pdf": [".pdf"] }
+            }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(pdfBlob);
+          await writable.close();
+        } else {
+          pdf.save(fileName);
+        }
+        setExportStatus("PDF downloaded.", "success");
+      } catch (error) {
+        setExportStatus(error.message || "Could not download the quotation PDF.", "error");
+      }
+    });
+
     render();
   </script>
 </body>
