@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinoyProto 3D - Saved Quotations</title>
+  <style>
+    :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --line:#2b3a4b; --orange:#ff7200; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+    nav { padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-weight:700; text-decoration:none; }
+    .back:hover,.back:focus-visible { color:var(--orange); }
+    .nav-label { margin:0 8px 9px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .tool-link { display:block; padding:12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; transition:.2s ease; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; transform:translateX(2px); }
+    main { width:min(100%,1100px); margin:0 auto; padding:clamp(24px,5vw,58px); }
+    h1 { margin:0 0 8px; font-size:clamp(30px,5vw,46px); letter-spacing:-.05em; }
+    .intro { margin:0 0 26px; color:var(--muted); }
+    .toolbar { margin-bottom:18px; }
+    input { width:100%; padding:11px 12px; border:1px solid #516276; border-radius:8px; color:var(--ink); background:#111a24; font:inherit; }
+    input:focus { border-color:var(--orange); outline:2px solid rgba(255,114,0,.2); }
+    .status { min-height:22px; margin:0 0 12px; color:var(--muted); }
+    .status.error { color:#ff9a9a; }
+    .records { display:grid; gap:12px; }
+    .record { border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); overflow:hidden; }
+    .record summary { display:grid; grid-template-columns:1.1fr 1.6fr 1fr auto; gap:16px; align-items:center; padding:16px; cursor:pointer; list-style:none; }
+    .record summary::-webkit-details-marker { display:none; }
+    .record summary:hover { background:rgba(255,114,0,.08); }
+    .record-number { color:#ffb37a; font-weight:900; }
+    .record-date { color:var(--muted); font-size:12px; }
+    .record-total { text-align:right; font-weight:800; }
+    .record-body { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding:0 16px 18px; border-top:1px solid var(--line); }
+    .record-body h2 { margin:16px 0 6px; font-size:13px; color:#ffb37a; }
+    .record-body p { margin:4px 0; color:var(--muted); white-space:pre-wrap; }
+    .record-body strong { color:var(--ink); }
+    .items { grid-column:1/-1; width:100%; border-collapse:collapse; font-size:12px; }
+    .items th,.items td { padding:7px; border-bottom:1px solid var(--line); text-align:left; }
+    .items th { color:var(--muted); }
+    .empty { padding:26px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
+    @media (max-width:700px) {
+      .app { display:block; }
+      nav { display:flex; align-items:center; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
+      .brand { flex:0 0 auto; margin:0 8px 0 0; }
+      .nav-label { display:none; }
+      .tool-link { flex:0 0 auto; padding:10px 12px; white-space:nowrap; }
+      main { padding:34px 18px; }
+      .record summary { grid-template-columns:1fr auto; gap:5px 12px; }
+      .record-date,.record-total { text-align:left; }
+      .record-body { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <a class="back" href="../index.html">← Return to home</a>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link active" href="quotation-records.html">Saved Quotations</a>
+    </nav>
+    <main>
+      <h1>Saved quotations</h1>
+      <p class="intro">Quotation information saved in your Supabase database.</p>
+      <div class="toolbar">
+        <input id="searchInput" type="search" placeholder="Search project, customer, or quotation number" aria-label="Search saved quotations">
+      </div>
+      <p class="status" id="status" aria-live="polite">Loading saved quotations…</p>
+      <section class="records" id="records" aria-label="Saved quotations"></section>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    const recordsElement = document.getElementById("records");
+    const statusElement = document.getElementById("status");
+    const searchInput = document.getElementById("searchInput");
+    let records = [];
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+      }[character]));
+    }
+    function money(value) {
+      return Number(value || 0).toLocaleString("en-PH", { style:"currency", currency:"PHP" });
+    }
+    function recordTotal(record) {
+      return (record.items || []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
+    }
+    function renderRecords() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = records.filter((record) => [record.quotation_number, record.project_name, record.customer_name]
+        .some((value) => String(value || "").toLowerCase().includes(query)));
+      if (!filtered.length) {
+        recordsElement.innerHTML = `<div class="empty">${records.length ? "No quotations match your search." : "No saved quotations yet."}</div>`;
+        return;
+      }
+      recordsElement.innerHTML = filtered.map((record) => {
+        const items = (record.items || []).map((item) => `<tr><td>${escapeHtml(item.item)}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.material)}</td><td>${escapeHtml(item.qty)}</td><td>${money(item.price)}</td></tr>`).join("");
+        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
+      }).join("");
+    }
+    async function loadRecords() {
+      const response = await supabaseClient.from("quotations").select("*").order("created_at", { ascending:false });
+      if (response.error) {
+        statusElement.textContent = `Could not load saved quotations: ${response.error.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      records = response.data || [];
+      statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"}`;
+      renderRecords();
+    }
+    searchInput.addEventListener("input", renderRecords);
+    loadRecords();
+  </script>
+</body>
+</html>
