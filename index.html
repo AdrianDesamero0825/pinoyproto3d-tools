@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinoyProto 3D - Tools</title>
+  <style>
+    :root {
+      --ink: #edf2f7;
+      --muted: #9eacbd;
+      --panel: #151d27;
+      --panel-2: #111a24;
+      --line: #2b3a4b;
+      --orange: #ff7200;
+      --orange-dark: #d95100;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 4%, rgba(255, 114, 0, .13), transparent 28rem),
+        #0d141c;
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+    nav { padding: 28px 16px; border-right: 1px solid var(--line); background: var(--panel-2); }
+    .brand { margin: 0 8px 28px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .nav-label { margin: 0 8px 9px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .tool-link {
+      display: block; padding: 12px; border: 1px solid transparent; border-radius: 9px;
+      color: var(--ink); text-decoration: none; line-height: 1.35;
+    }
+    .tool-link:hover, .tool-link:focus-visible {
+      border-color: rgba(255, 114, 0, .45); background: rgba(255, 114, 0, .12);
+      outline: none;
+    }
+    main { padding: 38px; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -.04em; }
+    @media (max-width: 700px) {
+      .app { display: block; }
+      nav { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+      .brand { flex: 0 0 auto; margin: 0 10px 0 0; }
+      .nav-label { display: none; }
+      .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
+      main { padding: 26px 20px; }
+    }
+    @media (max-width: 420px) {
+      nav { padding-inline: 10px; }
+      .brand { font-size: 11px; }
+      main { padding: 22px 14px; }
+      h1 { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="tools/customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="tools/quotation-maker.html">Quotation Maker</a>
+    </nav>
+    <main>
+      <h1>Home</h1>
+    </main>
+  </div>
+</body>
+</html>
