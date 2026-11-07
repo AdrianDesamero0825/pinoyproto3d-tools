@@ -21,6 +21,16 @@
     h1 { margin:0 0 8px; font-size:clamp(30px,5vw,46px); letter-spacing:-.05em; }
     .intro { margin:0 0 26px; color:var(--muted); }
     .toolbar { margin-bottom:18px; }
+    .admin-panel { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:18px; padding:14px; border:1px solid var(--line); border-radius:12px; background:rgba(21,29,39,.86); }
+    .admin-panel h2 { flex:1 0 100%; margin:0; font-size:14px; }
+    .admin-panel form { display:flex; flex:1 1 100%; flex-wrap:wrap; gap:10px; }
+    .admin-panel input { flex:1 1 180px; }
+    .admin-button { padding:11px 14px; border:0; border-radius:8px; color:#fff; background:var(--orange); font:inherit; font-weight:800; cursor:pointer; }
+    .admin-button.secondary { background:#2a3848; }
+    .admin-button.danger { background:#9f3434; }
+    .admin-button:hover:not(:disabled) { filter:brightness(1.15); }
+    .admin-button:disabled { opacity:.5; cursor:not-allowed; }
+    .admin-user { color:#8ee0a4; font-size:12px; }
     input { width:100%; padding:11px 12px; border:1px solid #516276; border-radius:8px; color:var(--ink); background:#111a24; font:inherit; }
     input:focus { border-color:var(--orange); outline:2px solid rgba(255,114,0,.2); }
     .status { min-height:22px; margin:0 0 12px; color:var(--muted); }
@@ -37,6 +47,10 @@
     .record-body h2 { margin:16px 0 6px; font-size:13px; color:#ffb37a; }
     .record-body p { margin:4px 0; color:var(--muted); white-space:pre-wrap; }
     .record-body strong { color:var(--ink); }
+    .record-actions { display:flex; flex-wrap:wrap; gap:8px; grid-column:1/-1; }
+    .edit-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; grid-column:1/-1; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111a24; }
+    .edit-form label { display:grid; gap:4px; color:var(--muted); font-size:11px; font-weight:700; }
+    .edit-form input { width:100%; padding:8px; }
     .items { grid-column:1/-1; width:100%; border-collapse:collapse; font-size:12px; }
     .items th,.items td { padding:7px; border-bottom:1px solid var(--line); text-align:left; }
     .items th { color:var(--muted); }
@@ -52,6 +66,7 @@
       .record summary { grid-template-columns:1fr auto; gap:5px 12px; }
       .record-date,.record-total { text-align:left; }
       .record-body { grid-template-columns:1fr; }
+      .edit-form { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -71,6 +86,17 @@
       <div class="toolbar">
         <input id="searchInput" type="search" placeholder="Search project, customer, or quotation number" aria-label="Search saved quotations">
       </div>
+      <section class="admin-panel" aria-label="Admin login">
+        <h2>Admin access</h2>
+        <form id="loginForm">
+          <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" required>
+          <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" required>
+          <button class="admin-button" type="submit">Log in</button>
+        </form>
+        <span class="admin-user" id="adminUser" hidden></span>
+        <button class="admin-button secondary" id="logoutButton" type="button" hidden>Log out</button>
+        <button class="admin-button danger" id="clearAllButton" type="button" hidden>Clear all quotations</button>
+      </section>
       <p class="status" id="status" aria-live="polite">Loading saved quotations…</p>
       <section class="records" id="records" aria-label="Saved quotations"></section>
     </main>
@@ -81,7 +107,14 @@
     const recordsElement = document.getElementById("records");
     const statusElement = document.getElementById("status");
     const searchInput = document.getElementById("searchInput");
+    const loginForm = document.getElementById("loginForm");
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const adminUser = document.getElementById("adminUser");
+    const logoutButton = document.getElementById("logoutButton");
+    const clearAllButton = document.getElementById("clearAllButton");
     let records = [];
+    let session = null;
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -94,6 +127,23 @@
     function recordTotal(record) {
       return (record.items || []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
     }
+    function setAdminState(nextSession) {
+      session = nextSession;
+      const loggedIn = Boolean(session);
+      loginForm.hidden = loggedIn;
+      adminUser.hidden = !loggedIn;
+      logoutButton.hidden = !loggedIn;
+      clearAllButton.hidden = !loggedIn;
+      adminUser.textContent = loggedIn ? `Logged in as ${session.user.email}` : "";
+      renderRecords();
+    }
+    function adminButton(label, className, attributes) {
+      return `<button class="admin-button ${className || ""}" type="button" ${attributes}>${label}</button>`;
+    }
+    function editForm(record) {
+      if (!session) return "";
+      return `<form class="edit-form" data-record-id="${escapeHtml(record.id)}"><label>Project name<input name="project_name" value="${escapeHtml(record.project_name)}" required></label><label>Customer name<input name="customer_name" value="${escapeHtml(record.customer_name)}"></label><label>Quotation date<input name="quotation_date" type="date" value="${escapeHtml(record.quotation_date)}"></label><div class="record-actions"><button class="admin-button" type="submit">Save changes</button>${adminButton("Delete quotation","danger",`data-delete-id="${escapeHtml(record.id)}"`)}</div></form>`;
+    }
     function renderRecords() {
       const query = searchInput.value.trim().toLowerCase();
       const filtered = records.filter((record) => [record.quotation_number, record.project_name, record.customer_name]
@@ -104,8 +154,33 @@
       }
       recordsElement.innerHTML = filtered.map((record) => {
         const items = (record.items || []).map((item) => `<tr><td>${escapeHtml(item.item)}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.material)}</td><td>${escapeHtml(item.qty)}</td><td>${money(item.price)}</td></tr>`).join("");
-        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body"><div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
+        return `<details class="record"><summary><span class="record-number">${escapeHtml(record.quotation_number)}</span><strong>${escapeHtml(record.project_name)}</strong><span class="record-date">${escapeHtml(record.quotation_date || "No date")}</span><span class="record-total">${money(recordTotal(record))}</span></summary><div class="record-body">${editForm(record)}<div><h2>Customer</h2><p><strong>${escapeHtml(record.customer_name || "No customer name")}</strong></p><p>${escapeHtml(record.contact)}</p><p>${escapeHtml(record.address)}</p><h2>Project</h2><p>Bill to: ${escapeHtml(record.bill_to)}</p><p>Ship to: ${escapeHtml(record.ship_to)}</p></div><div><h2>Business information</h2><p>${escapeHtml(record.business_name)}</p><p>${escapeHtml(record.business_contact)}</p><p>${escapeHtml(record.business_email)}</p><h2>Last updated</h2><p>${escapeHtml(record.updated_at ? new Date(record.updated_at).toLocaleString() : "Not available")}</p></div><table class="items"><thead><tr><th>Item</th><th>Description</th><th>Material</th><th>Qty</th><th>Unit price</th></tr></thead><tbody>${items || "<tr><td colspan=\"5\">No items recorded.</td></tr>"}</tbody></table></div></details>`;
       }).join("");
+    }
+    async function updateRecord(form) {
+      const recordId = form.dataset.recordId;
+      const values = Object.fromEntries(new FormData(form));
+      const { error } = await supabaseClient.from("quotations").update({
+        project_name: values.project_name,
+        customer_name: values.customer_name,
+        quotation_date: values.quotation_date,
+        updated_at: new Date().toISOString()
+      }).eq("id", recordId);
+      if (error) throw new Error(error.message);
+      statusElement.textContent = "Quotation updated.";
+      await loadRecords();
+    }
+    async function deleteRecord(recordId) {
+      if (!window.confirm("Delete this quotation permanently?")) return;
+      const { error } = await supabaseClient.from("quotations").delete().eq("id", recordId);
+      if (error) throw new Error(error.message);
+      await loadRecords();
+    }
+    async function clearAllRecords() {
+      if (!window.confirm("Clear all saved quotations permanently?")) return;
+      const { error } = await supabaseClient.from("quotations").delete().not("id", "is", null);
+      if (error) throw new Error(error.message);
+      await loadRecords();
     }
     async function loadRecords() {
       const response = await supabaseClient.from("quotations").select("*").order("created_at", { ascending:false });
@@ -119,6 +194,41 @@
       renderRecords();
     }
     searchInput.addEventListener("input", renderRecords);
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value.trim(), password: passwordInput.value });
+      if (error) {
+        statusElement.textContent = `Login failed: ${error.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      passwordInput.value = "";
+      setAdminState(data.session);
+      statusElement.className = "status";
+    });
+    logoutButton.addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        statusElement.textContent = `Could not log out: ${error.message}`;
+        statusElement.className = "status error";
+        return;
+      }
+      setAdminState(null);
+    });
+    clearAllButton.addEventListener("click", async () => {
+      try { await clearAllRecords(); } catch (error) { statusElement.textContent = `Could not clear quotations: ${error.message}`; statusElement.className = "status error"; }
+    });
+    recordsElement.addEventListener("submit", async (event) => {
+      if (!event.target.matches(".edit-form")) return;
+      event.preventDefault();
+      try { await updateRecord(event.target); } catch (error) { statusElement.textContent = `Could not update quotation: ${error.message}`; statusElement.className = "status error"; }
+    });
+    recordsElement.addEventListener("click", async (event) => {
+      const deleteButton = event.target.closest("[data-delete-id]");
+      if (!deleteButton) return;
+      try { await deleteRecord(deleteButton.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete quotation: ${error.message}`; statusElement.className = "status error"; }
+    });
+    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
     loadRecords();
   </script>
 </body>
