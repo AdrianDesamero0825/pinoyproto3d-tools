@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="View and manage saved PinoyProto 3D quotations and regenerate matching PDF documents.">
   <title>PinoyProto 3D - Saved Quotations</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <style>
     :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --line:#2b3a4b; --orange:#ff7200; }
     * { box-sizing:border-box; }
@@ -92,8 +95,8 @@
       <section class="admin-panel" aria-label="Admin login">
         <h2>Admin access</h2>
         <form id="loginForm">
-          <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" required>
-          <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" required>
+          <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
+          <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
           <button class="admin-button" type="submit">Log in</button>
         </form>
         <span class="admin-user" id="adminUser" hidden></span>
