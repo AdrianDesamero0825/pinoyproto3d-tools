@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinoyProto 3D - New Tool</title>
+  <style>
+    :root { --ink: #f4f7fb; --muted: #9eacbd; --line: #2b3a4b; --orange: #ff7200; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: #0d141c; font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+    nav { position: sticky; top: 0; display: flex; height: 100vh; min-height: 100vh; flex-direction: column; padding: 28px 16px; border-right: 1px solid var(--line); background: rgba(17,26,36,.86); }
+    .brand { margin: 0 8px 28px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .back { display: inline-block; margin: 0 8px 24px; color: var(--muted); font-size: 13px; font-weight: 700; text-decoration: none; }
+    .nav-label { margin: 18px 8px 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .tool-link { display: block; margin: 0 2px; padding: 11px 12px; border: 1px solid transparent; border-radius: 10px; color: var(--ink); text-decoration: none; line-height: 1.35; }
+    .tool-link.active, .tool-link:hover, .tool-link:focus-visible { border-color: rgba(255, 114, 0, .45); background: rgba(255, 114, 0, .12); outline: none; }
+    .saved-link { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
+    @media (max-width: 700px) {
+      .app { display: block; }
+      nav { position: static; display: flex; height: auto; min-height: 0; align-items: center; gap: 10px; padding: 14px 16px; overflow-x: auto; }
+      .brand { flex: 0 0 auto; margin: 0 8px 0 0; }
+      .nav-label { display: none; }
+      .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
+      .saved-link { margin-top: 0; padding-top: 10px; border-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <a class="back" href="../index.html">← Return to home</a>
+      <p class="nav-label">Statistics</p>
+      <a class="tool-link" href="dashboard.html">Dashboard</a>
+      <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link active" href="new-tool.html" aria-current="page">New Tool</a>
+      <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
+      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+    </nav>
+    <main></main>
+  </div>
+</body>
+</html>
