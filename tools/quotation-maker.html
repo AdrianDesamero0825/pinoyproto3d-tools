@@ -161,7 +161,7 @@
       <a class="tool-link active" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <main>
       <section class="controls">
@@ -482,13 +482,20 @@
     async function collectRecord() {
       const projectName = value("projectName").trim();
       if (!projectName) throw new Error("Enter a project name before adding a record.");
+      const customerName = value("customerName").trim();
       const { data: matchingRecords, error: matchingError } = await supabaseClient
         .from("quotations")
-        .select("id, quotation_number")
+        .select("id, quotation_number, customer_name, project_name")
+        .ilike("customer_name", customerName)
         .ilike("project_name", projectName)
-        .limit(1);
+        .limit(100);
       if (matchingError) throw new Error(`Could not check existing records: ${matchingError.message}`);
-      const matchingRecord = matchingRecords[0];
+      const customerKey = normalizeMatch(customerName);
+      const projectKey = normalizeMatch(projectName);
+      const matchingRecord = (matchingRecords || []).find((record) =>
+        normalizeMatch(record.customer_name) === customerKey &&
+        normalizeMatch(record.project_name) === projectKey
+      );
       let quotationNumber = matchingRecord ? matchingRecord.quotation_number : value("quoteNo").trim();
       if (!quotationNumber) quotationNumber = await getNextQuotationNumber();
 
@@ -514,7 +521,7 @@
         project_name: projectName,
         quotation_year: Number(quotationNumber.slice(0, 4)),
         quotation_date: value("date") || getLocalDate(),
-        customer_name: value("customerName"),
+        customer_name: customerName,
         contact: value("contact"),
         address: value("address"),
         bill_to: value("billTo"),
@@ -530,7 +537,7 @@
       };
 
       if (matchingRecord) {
-        const overwrite = window.confirm(`A quotation for "${projectName}" already exists.\n\nOK: overwrite the existing record\nCancel: add another record`);
+        const overwrite = window.confirm(`A quotation already exists for:\nCustomer: ${customerName}\nProject: ${projectName}\n\nOK: overwrite this customer's quotation\nCancel: add another record`);
         if (!overwrite) {
           delete record.id;
           record.quotation_number = await getNextQuotationNumber();
@@ -649,7 +656,7 @@
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".autocomplete-field")) closeCustomerSuggestions();
     });
-    initializeQuotationDetails();
+    window.quotationDetailsReady = initializeQuotationDetails();
     loadTrackerSuggestions().catch((error) => {
       setExportStatus(error.message, "error");
     });

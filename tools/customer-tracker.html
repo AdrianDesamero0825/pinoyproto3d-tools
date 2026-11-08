@@ -116,7 +116,7 @@
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <main>
       <div class="page-heading"><div><h1>Customer Tracker</h1><p class="intro">Track every customer project from inquiry to completion.</p></div><div class="date-note">Saved in Supabase</div></div>
@@ -250,6 +250,7 @@
         });
         const frameWindow = frame.contentWindow;
         const frameDocument = frameWindow.document;
+        if (frameWindow.quotationDetailsReady) await frameWindow.quotationDetailsReady;
         setFrameField(frameDocument, "quoteNo", quotation.quotation_number);
         setFrameField(frameDocument, "date", quotation.quotation_date);
         setFrameField(frameDocument, "customerName", quotation.customer_name);

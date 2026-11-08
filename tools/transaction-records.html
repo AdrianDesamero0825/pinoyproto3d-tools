@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinoyProto 3D - Transactions Done</title>
+  <style>
+    :root { --ink:#edf2f7; --muted:#9eacbd; --panel:#151d27; --line:#2b3a4b; --orange:#ff7200; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,sans-serif; }
+    .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+    nav { position:sticky; top:0; display:flex; height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .back,.tool-link { color:var(--ink); text-decoration:none; }
+    .back { margin:0 8px 24px; color:var(--muted); font-weight:700; }
+    .nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .back + .nav-label { margin-top:0; }
+    .tool-link { display:block; margin:0 2px; padding:11px 12px; border:1px solid transparent; border-radius:10px; line-height:1.35; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:rgba(255,114,0,.12); outline:none; }
+    .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
+    main { width:min(100%,900px); margin:0 auto; padding:clamp(24px,5vw,58px); }
+    h1 { margin:0 0 8px; font-size:clamp(30px,5vw,46px); letter-spacing:-.05em; }
+    .intro,.status,.transaction-meta,.transaction-card p { color:var(--muted); }
+    .intro { margin:0 0 26px; }
+    .toolbar { margin-bottom:18px; }
+    input { width:100%; padding:11px 12px; border:1px solid #516276; border-radius:8px; color:var(--ink); background:#111a24; font:inherit; }
+    .admin-panel { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:18px; padding:14px; border:1px solid var(--line); border-radius:12px; background:rgba(21,29,39,.86); }
+    .admin-panel h2 { flex:1 0 100%; margin:0; font-size:14px; }
+    .admin-panel form { display:flex; flex:1 1 100%; gap:10px; }
+    .admin-panel input { flex:1; }
+    button { padding:11px 14px; border:0; border-radius:8px; color:#fff; background:var(--orange); font:inherit; font-weight:800; cursor:pointer; }
+    button.secondary { background:#2a3848; }
+    button.danger { background:#9f3434; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .admin-user { color:#8ee0a4; font-size:12px; }
+    .records { display:grid; gap:12px; }
+    .transaction-card { display:grid; gap:8px; padding:16px; border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); }
+    .transaction-card h2 { margin:0; font-size:17px; }
+    .transaction-meta { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:12px; }
+    .transaction-card p { margin:0; }
+    .transaction-card strong { color:var(--ink); }
+    .empty { padding:26px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
+    @media (max-width:700px) { .app { display:block; } nav { position:static; height:auto; flex-direction:row; align-items:center; gap:8px; padding:14px 16px; overflow-x:auto; } .brand { flex:0 0 auto; margin:0 8px 0 0; } .back,.nav-label { display:none; } .tool-link { flex:0 0 auto; white-space:nowrap; } .saved-link { margin-top:0; padding-top:10px; border-top:0; } main { padding:34px 18px; } .admin-panel form { flex-wrap:wrap; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav aria-label="Tool navigation">
+      <p class="brand">PinoyProto 3D</p>
+      <a class="back" href="../index.html">← Return to home</a>
+      <p class="nav-label">Statistics</p>
+      <a class="tool-link" href="dashboard.html">Dashboard</a>
+      <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
+      <p class="nav-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
+      <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
+      <a class="tool-link active" href="transaction-records.html">Transactions Done</a>
+    </nav>
+    <main>
+      <h1>Transactions done</h1>
+      <p class="intro">Completed customer orders are managed separately from saved quotations.</p>
+      <div class="toolbar"><input id="searchInput" type="search" placeholder="Search project or customer" aria-label="Search transactions"></div>
+      <section class="admin-panel" aria-label="Admin login">
+        <h2>Admin access</h2>
+        <form id="loginForm"><input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" required><input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" required><button type="submit">Log in</button></form>
+        <span class="admin-user" id="adminUser" hidden></span><button class="secondary" id="logoutButton" type="button" hidden>Log out</button>
+      </section>
+      <p class="status" id="status" aria-live="polite">Loading completed transactions…</p>
+      <section class="records" id="transactions" aria-label="Completed transactions"></section>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    const transactionsElement = document.getElementById("transactions");
+    const statusElement = document.getElementById("status");
+    const searchInput = document.getElementById("searchInput");
+    const loginForm = document.getElementById("loginForm");
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const adminUser = document.getElementById("adminUser");
+    const logoutButton = document.getElementById("logoutButton");
+    let session = null;
+    let transactions = [];
+    let quotations = [];
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
+    const money = (value) => Number(value || 0).toLocaleString("en-PH", { style:"currency", currency:"PHP" });
+    const total = (quotation) => (quotation?.items || []).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.price || 0), 0);
+    function render() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = transactions.filter((item) => [item.project_name, item.customer_name].some((value) => String(value || "").toLowerCase().includes(query)));
+      statusElement.textContent = `${transactions.length} completed transaction${transactions.length === 1 ? "" : "s"}`;
+      transactionsElement.innerHTML = filtered.length ? filtered.map((item) => {
+        const quotation = quotations.find((record) => record.tracker_id === item.id) || quotations.find((record) => String(record.customer_name).trim().toLowerCase() === String(item.customer_name).trim().toLowerCase() && String(record.project_name).trim().toLowerCase() === String(item.project_name).trim().toLowerCase());
+        const amount = quotation ? total(quotation) : Number(item.quoted_amount || 0);
+        const deleteButton = session ? `<button class="danger" type="button" data-delete-id="${escapeHtml(item.id)}">Delete transaction</button>` : "";
+        return `<article class="transaction-card"><h2>${escapeHtml(item.project_name || "Untitled project")}</h2><div class="transaction-meta"><span>Customer: <strong>${escapeHtml(item.customer_name || "No customer name")}</strong></span><span>Completed: ${escapeHtml(item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-PH") : "No date")}</span></div><p>Amount: ${money(amount)} · Paid: ${money(item.paid_amount)} · Balance: ${money(Math.max(amount - Number(item.paid_amount || 0), 0))}</p>${deleteButton}</article>`;
+      }).join("") : `<div class="empty">${transactions.length ? "No transactions match your search." : "No completed customer orders yet."}</div>`;
+    }
+    function setAdminState(nextSession) {
+      session = nextSession;
+      loginForm.hidden = Boolean(session);
+      adminUser.hidden = !session;
+      logoutButton.hidden = !session;
+      adminUser.textContent = session ? `Logged in as ${session.user.email}` : "";
+      render();
+    }
+    async function load() {
+      const [{ data: trackers, error: trackerError }, { data: records, error: recordError }] = await Promise.all([
+        supabaseClient.from("customer_trackers").select("id, customer_name, project_name, quoted_amount, paid_amount, updated_at").eq("stage", "Completed").order("updated_at", { ascending:false }),
+        supabaseClient.from("quotations").select("id, tracker_id, customer_name, project_name, items")
+      ]);
+      if (trackerError || recordError) { statusElement.textContent = `Could not load transactions: ${(trackerError || recordError).message}`; statusElement.className = "status error"; return; }
+      transactions = trackers || [];
+      quotations = records || [];
+      render();
+    }
+    async function deleteTransaction(id) {
+      if (!session) throw new Error("You must be logged in to delete a transaction.");
+      if (!window.confirm("Remove this completed transaction permanently? The linked quotation will be kept.")) return;
+      const { error: unlinkError } = await supabaseClient.from("quotations").update({ tracker_id:null }).eq("tracker_id", id);
+      if (unlinkError) throw new Error(unlinkError.message);
+      const { error } = await supabaseClient.from("customer_trackers").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+      await load();
+    }
+    searchInput.addEventListener("input", render);
+    loginForm.addEventListener("submit", async (event) => { event.preventDefault(); const { data, error } = await supabaseClient.auth.signInWithPassword({ email:emailInput.value.trim(), password:passwordInput.value }); if (error) { statusElement.textContent = `Login failed: ${error.message}`; statusElement.className = "status error"; return; } passwordInput.value = ""; setAdminState(data.session); });
+    logoutButton.addEventListener("click", async () => { const { error } = await supabaseClient.auth.signOut(); if (error) { statusElement.textContent = `Could not log out: ${error.message}`; statusElement.className = "status error"; return; } setAdminState(null); });
+    transactionsElement.addEventListener("click", async (event) => { const button = event.target.closest("[data-delete-id]"); if (!button) return; button.disabled = true; try { await deleteTransaction(button.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete transaction: ${error.message}`; statusElement.className = "status error"; button.disabled = false; } });
+    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
+    load();
+  </script>
+</body>
+</html>

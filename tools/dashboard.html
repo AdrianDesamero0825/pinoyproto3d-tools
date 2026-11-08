@@ -93,7 +93,7 @@
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <main>
       <div class="page-heading"><div><h1>Dashboard</h1><p class="intro">Company performance at a glance.</p></div><div class="date-range" id="dateRange"></div></div>
@@ -127,7 +127,11 @@
     const money = (value) => Number(value || 0).toLocaleString("en-PH", { style:"currency", currency:"PHP" });
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
     const recordTotal = (record) => (Array.isArray(record.items) ? record.items : []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
-    const monthKey = (date) => String(date || "").slice(0, 7);
+    const monthKey = (date) => {
+      const parsed = date instanceof Date ? date : new Date(date);
+      if (Number.isNaN(parsed.getTime())) return "";
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+    };
     const monthLabel = (key) => new Date(`${key}-01T00:00:00`).toLocaleDateString("en-PH", { month:"short" });
     const aggregateBy = (records, field, valueForRecord = recordTotal) => records.reduce((groups, record) => {
       const key = String(record[field] || "Unspecified").trim() || "Unspecified";
@@ -160,7 +164,7 @@
       const totalValue = validatedRecords.reduce((total, record) => total + recordTotal(record), 0);
       const salesValue = validatedTrackers.reduce((total, tracker) => total + trackerPaidTotal(tracker), 0);
       const balanceValue = validatedTrackers.reduce((total, tracker) => total + trackerBalance(tracker), 0);
-      const monthPrefix = monthKey(new Date().toISOString());
+      const monthPrefix = monthKey(new Date());
       const monthSales = validatedTrackers.filter((tracker) => monthKey(tracker.updated_at) === monthPrefix).reduce((total, tracker) => total + trackerPaidTotal(tracker), 0);
       document.getElementById("totalCount").textContent = validatedRecords.length.toLocaleString();
       document.getElementById("countNote").textContent = `${new Set(validatedRecords.map((record) => record.customer_name).filter(Boolean)).size} validated customer${new Set(validatedRecords.map((record) => record.customer_name).filter(Boolean)).size === 1 ? "" : "s"}`;

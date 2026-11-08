@@ -68,7 +68,7 @@
     .transaction-card p { margin:0; color:var(--muted); }
     .transaction-card strong { color:var(--ink); }
     .transaction-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
-    .page-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+    .page-tabs { display:none; }
     .page-tab { padding:9px 12px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:#111a24; font:inherit; font-weight:800; cursor:pointer; }
     .page-tab.active,.page-tab:hover { border-color:rgba(255,114,0,.55); color:var(--ink); background:rgba(255,114,0,.12); }
     @media (max-width:700px) {
@@ -100,16 +100,16 @@
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link active saved-link" href="quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <main>
-      <h1>Saved quotations</h1>
-      <p class="intro">Quotation information saved in your Supabase database.</p>
-      <div class="page-tabs" role="tablist" aria-label="Quotation records">
-        <button class="page-tab active" id="savedTab" type="button" role="tab" aria-selected="true">Saved Quotations</button>
-        <button class="page-tab" id="transactionsTab" type="button" role="tab" aria-selected="false">Transactions Done</button>
+      <h1 id="pageTitle">Saved quotations</h1>
+      <p class="intro" id="pageIntro">Quotation information saved in your Supabase database.</p>
+      <div class="page-tabs" role="tablist" aria-label="Quotation records" hidden>
+        <button class="page-tab active" id="savedTab" type="button" role="tab" aria-controls="savedView" aria-selected="true">Saved Quotations</button>
+        <button class="page-tab" id="transactionsTab" type="button" role="tab" aria-controls="transactionsView" aria-selected="false">Transactions Done</button>
       </div>
-      <section id="savedView" class="tab-panel">
+      <section id="savedView" class="tab-panel" role="tabpanel" aria-labelledby="savedTab">
       <div class="toolbar">
         <input id="searchInput" type="search" placeholder="Search project, customer, or quotation number" aria-label="Search saved quotations">
       </div>
@@ -127,7 +127,7 @@
       <p class="status" id="status" aria-live="polite">Loading saved quotations…</p>
       <section class="records" id="records" aria-label="Saved quotations"></section>
       </section>
-      <section id="transactionsView" class="tab-panel" hidden>
+      <section id="transactionsView" class="tab-panel" role="tabpanel" aria-labelledby="transactionsTab" hidden>
         <p class="status" id="transactionsStatus" aria-live="polite">Loading completed transactions…</p>
         <section class="records" id="transactions" aria-label="Completed transactions"></section>
       </section>
@@ -148,6 +148,8 @@
     const clearAllButton = document.getElementById("clearAllButton");
     const savedView = document.getElementById("savedView");
     const transactionsView = document.getElementById("transactionsView");
+    const pageTitle = document.getElementById("pageTitle");
+    const pageIntro = document.getElementById("pageIntro");
     const savedTab = document.getElementById("savedTab");
     const transactionsTab = document.getElementById("transactionsTab");
     const transactionsElement = document.getElementById("transactions");
@@ -177,6 +179,7 @@
       clearAllButton.hidden = !loggedIn;
       adminUser.textContent = loggedIn ? `Logged in as ${session.user.email}` : "";
       renderRecords();
+      renderTransactions();
     }
     function adminButton(label, className, attributes) {
       return `<button class="admin-button ${className || ""}" type="button" ${attributes}>${label}</button>`;
@@ -246,6 +249,7 @@
       });
       const frameWindow = frame.contentWindow;
       const frameDocument = frameWindow.document;
+      if (frameWindow.quotationDetailsReady) await frameWindow.quotationDetailsReady;
       setFrameField(frameDocument, "quoteNo", record.quotation_number);
       setFrameField(frameDocument, "date", record.quotation_date);
       setFrameField(frameDocument, "customerName", record.customer_name);
@@ -329,7 +333,8 @@
         const quotationDetails = quotation
           ? `<p>Quotation <strong>${escapeHtml(quotation.quotation_number)}</strong> · ${escapeHtml(quotation.quotation_date || "No date")} · ${money(total)}</p><div class="transaction-actions"><button class="pdf-button" type="button" data-pdf-id="${escapeHtml(quotation.id)}">Generate PDF</button></div>`
           : `<p>No linked quotation was found for this completed order.</p>`;
-        return `<article class="transaction-card"><h2>${escapeHtml(transaction.project_name || "Untitled project")}</h2><div class="transaction-meta"><span>Customer: <strong>${escapeHtml(transaction.customer_name || "No customer name")}</strong></span><span>Completed: ${escapeHtml(transaction.updated_at ? new Date(transaction.updated_at).toLocaleDateString("en-PH") : "No date")}</span></div>${quotationDetails}<p>Paid: ${money(paid)} · Balance: ${money(Math.max(total - paid, 0))}</p></article>`;
+        const deleteTransactionButton = session ? adminButton("Delete transaction", "danger", `data-delete-transaction-id="${escapeHtml(transaction.id)}"`) : "";
+        return `<article class="transaction-card"><h2>${escapeHtml(transaction.project_name || "Untitled project")}</h2><div class="transaction-meta"><span>Customer: <strong>${escapeHtml(transaction.customer_name || "No customer name")}</strong></span><span>Completed: ${escapeHtml(transaction.updated_at ? new Date(transaction.updated_at).toLocaleDateString("en-PH") : "No date")}</span></div>${quotationDetails}<p>Paid: ${money(paid)} · Balance: ${money(Math.max(total - paid, 0))}</p>${deleteTransactionButton}</article>`;
       }).join("");
     }
     function setView(view) {
@@ -340,6 +345,10 @@
       transactionsTab.classList.toggle("active", transactionsActive);
       savedTab.setAttribute("aria-selected", String(!transactionsActive));
       transactionsTab.setAttribute("aria-selected", String(transactionsActive));
+      pageTitle.textContent = transactionsActive ? "Transactions done" : "Saved quotations";
+      pageIntro.textContent = transactionsActive
+        ? "Completed customer orders are managed separately from saved quotations."
+        : "Quotation information saved in your Supabase database.";
       if (transactionsActive) renderTransactions();
       history.replaceState(null, "", transactionsActive ? "#transactions" : "#saved");
     }
@@ -372,6 +381,16 @@
       const { error } = await supabaseClient.from("quotations").delete().eq("id", recordId);
       if (error) throw new Error(error.message);
       await loadRecords();
+    }
+    async function deleteTransaction(transactionId) {
+      if (!session) throw new Error("You must be logged in to delete a transaction.");
+      if (!window.confirm("Remove this completed transaction permanently? The linked quotation will be kept.")) return;
+      const { error: unlinkError } = await supabaseClient.from("quotations").update({ tracker_id: null }).eq("tracker_id", transactionId);
+      if (unlinkError) throw new Error(unlinkError.message);
+      const { error } = await supabaseClient.from("customer_trackers").delete().eq("id", transactionId);
+      if (error) throw new Error(error.message);
+      await loadRecords();
+      transactionsStatus.textContent = "Transaction deleted.";
     }
     async function clearAllRecords() {
       if (!window.confirm("Clear all saved quotations permanently?")) return;
@@ -466,6 +485,18 @@
       try { await deleteRecord(deleteButton.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete quotation: ${error.message}`; statusElement.className = "status error"; }
     });
     transactionsElement.addEventListener("click", async (event) => {
+      const deleteButton = event.target.closest("[data-delete-transaction-id]");
+      if (deleteButton) {
+        deleteButton.disabled = true;
+        try {
+          await deleteTransaction(deleteButton.dataset.deleteTransactionId);
+        } catch (error) {
+          transactionsStatus.textContent = `Could not delete transaction: ${error.message}`;
+          transactionsStatus.className = "status error";
+          deleteButton.disabled = false;
+        }
+        return;
+      }
       const pdfButton = event.target.closest("[data-pdf-id]");
       if (!pdfButton) return;
       const record = records.find((item) => item.id === pdfButton.dataset.pdfId);
@@ -483,7 +514,7 @@
     });
     supabaseClient.auth.getSession().then(({ data }) => {
       setAdminState(data.session);
-      setView(window.location.hash === "#transactions" ? "transactions" : "saved");
+      setView("saved");
     });
     loadRecords();
   </script>

@@ -146,7 +146,7 @@
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
 
     <div class="content">
@@ -345,7 +345,7 @@
     generateButton.addEventListener("click", async () => {
       if (!images.feedback || !images.product) return;
       generateButton.disabled = true;
-      setStatus("Generating your square postâ€¦");
+      setStatus("Generating your square post...");
       try {
         if (!images.template) images.template = await loadImage(TEMPLATE_URL);
         ctx.clearRect(0, 0, SIZE, SIZE);
