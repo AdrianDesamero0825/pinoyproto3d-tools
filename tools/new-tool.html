@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PinoyProto 3D - Carousel and Layout Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Montserrat:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     :root {
       --ink: #edf2f7;
@@ -26,7 +29,7 @@
       background:
         radial-gradient(circle at 85% 4%, rgba(255, 114, 0, .13), transparent 28rem),
         #0d141c;
-      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font: 15px/1.5 Montserrat, ui-sans-serif, system-ui, sans-serif;
     }
 
     .tool-app { display: grid; grid-template-columns: minmax(220px, 240px) minmax(0, 1fr); min-height: 100vh; }
@@ -166,7 +169,7 @@
     .carousel-canvas { position: relative; }
     #carousel-canvas { position: absolute; left: -10000px; top: 22px; opacity: 0; pointer-events: none; }
     #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: 360px; height: 480px; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 14px; background: #0f1117; }
-    .carousel-canvas.mode-hook { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1b1e29, #0a0c10); }
+    .carousel-canvas.mode-hook { display: flex; align-items: center; justify-content: center; background: #080a0f; }
     .bg-img-container, .overlay { position: absolute; inset: 0; }
     .bg-img-container { overflow: hidden; z-index: 0; }
     .bg-img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
@@ -174,32 +177,53 @@
     .canvas-content { position: relative; z-index: 5; width: 100%; padding: 10px; }
     #view-hook { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 25px; text-align: center; }
     .brand-badge { padding: 6px 14px; border-radius: 20px; color: #fff; background: var(--orange); font-weight: 900; }
-    #view-hook h1 { margin: 0; font-size: 2.5rem; line-height: 1.05; }
-    #view-hook p { margin: 0; color: #d1d5db; font-size: .85rem; }
+    #view-hook h1 { margin: 0; font-family: "Bebas Neue", sans-serif; font-size: 2.5rem; font-weight: 400; line-height: .98; letter-spacing: .01em; }
+    #view-hook p { margin: 0; color: #d1d5db; font-family: Montserrat, sans-serif; font-size: .85rem; font-weight: 300; }
     #view-product { display: flex; align-items: flex-end; height: 100%; pointer-events: none; }
-    .card-glass { display: flex; width: 100%; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.15); border-radius: 8px; background: rgba(15,17,23,.94); }
-    .card-glass h2 { margin: 0; font-size: 1.3rem; line-height: 1; }
-    .card-glass p { margin: 0; color: #d1d5db; font-size: .72rem; line-height: 1.2; }
-    .prod-badge { color: var(--orange); font-size: .68rem; font-weight: 900; }
+    .card-glass { display: flex; width: 100%; flex-direction: column; gap: 3px; padding: 8px 12px 9px; border: 1px solid #343843; border-radius: 8px; background: #0f1117; }
+    .card-glass h2 { margin: 0; font-family: "Bebas Neue", sans-serif; font-size: 1.3rem; font-weight: 400; line-height: .95; letter-spacing: .01em; }
+    .card-glass p { margin: 0; color: #d1d5db; font-family: Montserrat, sans-serif; font-size: .68rem; font-weight: 400; line-height: 1.15; }
+    .prod-badge { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: .72rem; font-weight: 400; letter-spacing: .02em; }
     .layout-studio-container { position: absolute; inset: 10px 10px 80px; z-index: 2; }
     .photo-box { position: relative; width: 100%; height: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; background: #0f1117; }
     .blur-backdrop { position: absolute; inset: -10px; z-index: 1; width: calc(100% + 20px); height: calc(100% + 20px); object-fit: cover; filter: blur(14px) brightness(.4); }
     .img-wrapper { position: relative; z-index: 2; width: 100%; height: 100%; overflow: hidden; }
     .img-wrapper img { display: block; width: 100%; height: 100%; object-fit: contain; }
-    .photo-tag { position: absolute; top: 6px; left: 6px; z-index: 10; padding: 3px 8px; border-radius: 4px; color: #fff; background: rgba(0,0,0,.85); font-size: .62rem; font-weight: 900; }
+    .photo-tag { position: absolute; top: 6px; left: 6px; z-index: 10; padding: 3px 8px; border-radius: 4px; color: #fff; background: rgba(0,0,0,.85); font-family: "Bebas Neue", sans-serif; font-size: .68rem; font-weight: 400; letter-spacing: .02em; }
     .carousel-canvas.bg-dark-clean { background: #0f1117; }
     .carousel-canvas.bg-cad-grid { background-color: #0d1017; background-image: linear-gradient(rgba(255,94,0,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,94,0,.12) 1px, transparent 1px); background-size: 20px 20px; }
     .carousel-canvas.bg-geo-diagonal { background: linear-gradient(135deg, #1b1e29, #0a0c10); }
     .carousel-canvas.bg-spotlight { background: radial-gradient(circle at 50% 35%, #2a2f42, #0f1117 80%); }
-    .layout-1-vertical .layout-studio-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .layout-1-horizontal .layout-studio-container { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
-    .layout-2 .layout-studio-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 155px 1fr; gap: 8px; }
-    .layout-2 .box-3 { grid-column: 1 / 3; position: relative; }
-    .layout-3 .layout-studio-container { display: flex; flex-direction: column; gap: 8px; }
+    .layout-1-vertical .layout-studio-container { inset: 10px 10px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .layout-1-vertical .box-1, .layout-1-vertical .box-2 { min-height: 0; }
+    .layout-1-vertical .box-2 { border: 2px solid var(--orange); }
+    .layout-1-vertical .box-3 { display: none; }
+    .layout-1-vertical .card-glass { margin-bottom: 4px; }
+    .layout-1-horizontal .layout-studio-container { inset: 10px 10px 80px; display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+    .layout-1-horizontal .box-1, .layout-1-horizontal .box-2 { min-height: 0; }
+    .layout-1-horizontal .box-2 { border: 2px solid var(--orange); }
+    .layout-1-horizontal .box-3, .layout-1-horizontal .box-4, .layout-1-horizontal .box-5 { display: none; }
+    .layout-1-horizontal .img-wrapper { background: transparent; }
+    .layout-1-horizontal .card-glass { margin-bottom: 4px; }
+    .layout-2 .layout-studio-container { inset: 10px 10px 80px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 155px 1fr; gap: 8px; }
+    .layout-2 .box-1, .layout-2 .box-2, .layout-2 .box-3 { min-height: 0; }
+    .layout-2 .box-2 { border: 2px solid var(--orange); }
+    .layout-2 .box-3 { grid-column: 1 / 3; position: relative; background: #292d3e; }
+    .layout-2 .box-1 .img-wrapper, .layout-2 .box-2 .img-wrapper, .layout-2 .box-3 .img-wrapper { background: transparent; }
+    .layout-3 .layout-studio-container { inset: 10px 10px 80px; display: flex; flex-direction: column; gap: 8px; }
+    .layout-3 .box-1, .layout-3 .box-2 { min-height: 0; background: #1b1e29; }
     .layout-3 .box-1 { flex: .8; }
     .layout-3 .box-2 { flex: 1.5; border: 2px solid var(--orange); }
+    .layout-3 .box-1 .img-wrapper, .layout-3 .box-2 .img-wrapper { background: transparent; }
+    .layout-3 .box-3, .layout-3 .box-4, .layout-3 .box-5 { display: none; }
+    .layout-3 .img-wrapper img[src$="placeholder.svg"] { opacity: 0; }
+    .layout-3 .box-1 .img-wrapper::after, .layout-3 .box-2 .img-wrapper::after { position: absolute; inset: 0; display: grid; place-items: center; color: #edf2f7; font: 300 30px Montserrat, sans-serif; content: "Client Sketch"; }
+    .layout-3 .box-2 .img-wrapper::after { content: "3D Model Render"; }
+    .layout-3 .card-glass { margin-bottom: 4px; }
     .layout-2 .inset-stack-right { display: flex; position: absolute; top: 10px; right: 10px; bottom: 10px; z-index: 6; width: 72px; flex-direction: column; gap: 8px; }
-    .layout-2 .inset-stack-right .photo-box { flex: 1; border: 2px solid #fff; }
+    .layout-2 .inset-stack-right .photo-box { flex: 1; border: 2px solid #fff; border-radius: 8px; background: #1b1e29; }
+    .layout-2 .inset-stack-right .img-wrapper { background: transparent; }
+    .layout-2 .card-glass { margin-bottom: 4px; }
     @media (max-width: 480px) { .carousel-canvas { height: min(480px, 125vw); } #view-hook h1 { font-size: 2rem; } }
   </style>
 </head>
@@ -588,20 +612,29 @@
         if (!productView.classList.contains('hidden')) {
           const canvasRect = canvas.getBoundingClientRect();
           all('.photo-box').forEach((box) => {
+            if (getComputedStyle(box).display === 'none') return;
             const boxRect = box.getBoundingClientRect();
+            if (boxRect.width <= 0 || boxRect.height <= 0) return;
             const x = boxRect.left - canvasRect.left;
             const y = boxRect.top - canvasRect.top;
             const image = box.querySelector('.img-wrapper img');
             const backdrop = box.querySelector('.blur-backdrop');
             context.fillStyle = '#0f1117';
             context.fillRect(x, y, boxRect.width, boxRect.height);
+            const wrapperStyle = getComputedStyle(box.querySelector('.img-wrapper'));
+            if (wrapperStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+              context.fillStyle = wrapperStyle.backgroundColor;
+              context.fillRect(x, y, boxRect.width, boxRect.height);
+            }
             context.save();
             context.beginPath();
             context.rect(x, y, boxRect.width, boxRect.height);
             context.clip();
-            context.filter = getComputedStyle(backdrop).filter;
-            applyCanvasTransform(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20);
-            drawContainedImage(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20, true);
+            if (getComputedStyle(backdrop).display !== 'none') {
+              context.filter = getComputedStyle(backdrop).filter;
+              applyCanvasTransform(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20);
+              drawContainedImage(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20, true);
+            }
             context.restore();
             context.strokeStyle = getComputedStyle(box).borderColor;
             context.lineWidth = 1;
@@ -612,7 +645,27 @@
             context.rect(x, y, boxRect.width, boxRect.height);
             context.clip();
             applyCanvasTransform(context, image, x, y, boxRect.width, boxRect.height);
-            drawContainedImage(context, image, x, y, boxRect.width, boxRect.height);
+            const isPlaceholder = image.src.endsWith('/placeholder.svg');
+            const isHorizontalPlaceholder = canvas.classList.contains('layout-1-horizontal') && isPlaceholder;
+            const isMultiPanelPlaceholder = canvas.classList.contains('layout-2') && isPlaceholder;
+            const isLayout3Placeholder = canvas.classList.contains('layout-3') && isPlaceholder;
+            if (isHorizontalPlaceholder || isMultiPanelPlaceholder || isLayout3Placeholder) {
+              context.fillStyle = '#edf2f7';
+              const placeholderSize = isLayout3Placeholder ? 30 : (box.classList.contains('box-3') ? 30 : (box.classList.contains('box-4') || box.classList.contains('box-5') ? 8 : 16));
+              context.font = isMultiPanelPlaceholder ? `300 ${placeholderSize}px Montserrat, sans-serif` : '300 30px Montserrat, sans-serif';
+              context.textAlign = 'center';
+              let placeholderText = box.classList.contains('box-1') ? 'Client Sketch' : '3D Model Render';
+              if (box.classList.contains('box-3')) placeholderText = 'Finished 3D Print';
+              if (box.classList.contains('box-4')) placeholderText = 'Detail 1';
+              if (box.classList.contains('box-5')) placeholderText = 'Detail 2';
+              if (canvas.classList.contains('layout-3')) {
+                placeholderText = box.classList.contains('box-1') ? 'Client Sketch' : '3D Model Render';
+              }
+              context.fillText(placeholderText, x + boxRect.width / 2, y + boxRect.height / 2 + (isMultiPanelPlaceholder ? 6 : 10));
+              context.textAlign = 'start';
+            } else {
+              drawContainedImage(context, image, x, y, boxRect.width, boxRect.height);
+            }
             context.restore();
 
             const tag = box.querySelector('.photo-tag');
@@ -640,18 +693,17 @@
           context.lineWidth = 1;
           context.stroke();
           context.fillStyle = '#edf2f7';
-          context.font = `900 ${getComputedStyle($('#preview-prod-title')).fontSize} ${cardStyle.fontFamily}`;
           const titleStyle = getComputedStyle($('#preview-prod-title'));
-          context.font = `900 ${titleStyle.fontSize} ${cardStyle.fontFamily}`;
+          context.font = `${titleStyle.fontWeight} ${titleStyle.fontSize} ${titleStyle.fontFamily}`;
           let textY = cardY + parseFloat(titleStyle.fontSize);
           textY += drawFittedText(context, $('#preview-prod-title').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(titleStyle.fontSize) + 2) * (parseFloat(titleStyle.fontSize) + 2);
           context.fillStyle = '#d1d5db';
           const descStyle = getComputedStyle($('#preview-prod-desc'));
-          context.font = `${descStyle.fontSize} ${cardStyle.fontFamily}`;
+          context.font = `${descStyle.fontWeight} ${descStyle.fontSize} ${descStyle.fontFamily}`;
           textY += drawFittedText(context, $('#preview-prod-desc').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(descStyle.fontSize) + 2) * (parseFloat(descStyle.fontSize) + 2);
           context.fillStyle = getComputedStyle($('#preview-prod-cta')).color;
           const ctaStyle = getComputedStyle($('#preview-prod-cta'));
-          context.font = `900 ${ctaStyle.fontSize} ${cardStyle.fontFamily}`;
+          context.font = `${ctaStyle.fontWeight} ${ctaStyle.fontSize} ${ctaStyle.fontFamily}`;
           drawFittedText(context, $('#preview-prod-cta').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(ctaStyle.fontSize) + 2);
         } else {
           const background = $('#preview-bg');
@@ -672,18 +724,20 @@
           const badge = $('.brand-badge');
           const badgeStyle = getComputedStyle(badge);
           const badgeY = contentRect.top - rect.top;
+          context.font = `900 ${badgeStyle.fontSize} ${contentStyle.fontFamily}`;
           const badgeWidth = Math.min(rect.width - 40, context.measureText(badge.textContent).width + 28);
           context.fillStyle = badgeStyle.backgroundColor;
           roundRect(context, (rect.width - badgeWidth) / 2, badgeY, badgeWidth, 32, 20);
           context.fill();
           context.fillStyle = '#fff';
-          context.font = `900 ${badgeStyle.fontSize} ${contentStyle.fontFamily}`;
           drawFittedText(context, badge.textContent, rect.width / 2, badgeY + 21, rect.width - 40, 18);
-          context.font = `900 ${getComputedStyle($('#preview-hook-title')).fontSize} ${contentStyle.fontFamily}`;
+          const titleStyle = getComputedStyle($('#preview-hook-title'));
+          context.font = `400 ${titleStyle.fontSize} "Bebas Neue", sans-serif`;
           const titleY = badgeY + 72;
           const titleLines = drawFittedText(context, $('#preview-hook-title').textContent, rect.width / 2, titleY, rect.width - 40, 40);
           context.fillStyle = '#d1d5db';
-          context.font = `${getComputedStyle($('#preview-hook-sub')).fontSize} ${contentStyle.fontFamily}`;
+          const subtitleStyle = getComputedStyle($('#preview-hook-sub'));
+          context.font = `${subtitleStyle.fontWeight} ${subtitleStyle.fontSize} ${subtitleStyle.fontFamily}`;
           drawFittedText(context, $('#preview-hook-sub').textContent, rect.width / 2, titleY + titleLines * 40 + 18, rect.width - 40, 18);
           context.textAlign = 'start';
         }

@@ -27,3 +27,40 @@ For a preview/export change, test only the affected page and relevant interactio
 - `index.html`: main tools landing page.
 - `tools/customer-feedback.html`: native canvas rendering and PNG download reference.
 - `tools/new-tool.html`: Carousel and Layout Builder implementation.
+
+## Typography and structure
+
+Use this Google Fonts family set for future pages:
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Montserrat:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+```
+
+Preferred roles:
+
+- `Bebas Neue`: display headings where a condensed title is useful.
+- `Anton`: strong hero headings, banners, and high-impact labels.
+- `Montserrat` weight 300: light supporting copy.
+- `Montserrat` weight 400: body text, forms, navigation, and controls.
+
+Preferred production structure:
+
+```text
+/
+├── index.html
+├── tools/
+│   ├── customer-feedback.html
+│   ├── quotation-maker.html
+│   └── new-tool.html
+├── assets/
+│   ├── css/
+│   ├── js/
+│   ├── fonts/
+│   └── images/
+└── .cursor/
+    └── skills/
+```
+
+Do not perform a full migration just to satisfy this structure. Add shared assets when a style or behavior is reused by multiple pages, and preserve working inline code until migration is safe and validated.

@@ -20,6 +20,11 @@ Use this skill only for website-development tasks in this repository.
 - Prefer self-contained page implementations when the surrounding tool uses inline CSS and JavaScript.
 - Keep changes surgical; do not rewrite unrelated tools or remove user changes.
 - Keep user-facing errors explicit. Do not silently fall back when rendering or export fails.
+- Treat typography as a shared design system:
+  - Bebas Neue and Anton for display headings and prominent labels.
+  - Montserrat Light and Regular for body text and UI controls.
+  - Prefer a shared Google Fonts import or shared font declaration over repeated page-specific imports.
+- Keep website files organized like a production site: pages in `tools/`, shared styles/assets in dedicated directories, and page-specific behavior close to its page until it is reused.
 
 For detailed preview/export rules, read [reference.md](reference.md) only when the task involves rendering or downloads.
 
