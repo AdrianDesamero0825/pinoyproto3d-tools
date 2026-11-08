@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <rect width="600" height="800" fill="#1b1e29"/>
+  <path d="M0 620 180 430l110 110 95-125L600 650v150H0z" fill="#292d3e"/>
+  <text x="300" y="370" fill="#fff" font-family="Arial, sans-serif" font-size="32" text-anchor="middle">Upload an image</text>
+</svg>

@@ -1,47 +1,819 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PinoyProto 3D - New Tool</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PinoyProto 3D - Carousel and Layout Builder</title>
   <style>
-    :root { --ink: #f4f7fb; --muted: #9eacbd; --line: #2b3a4b; --orange: #ff7200; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; color: var(--ink); background: #0d141c; font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-    .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
-    nav { position: sticky; top: 0; display: flex; height: 100vh; min-height: 100vh; flex-direction: column; padding: 28px 16px; border-right: 1px solid var(--line); background: rgba(17,26,36,.86); }
-    .brand { margin: 0 8px 28px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-    .back { display: inline-block; margin: 0 8px 24px; color: var(--muted); font-size: 13px; font-weight: 700; text-decoration: none; }
-    .nav-label { margin: 18px 8px 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    .tool-link { display: block; margin: 0 2px; padding: 11px 12px; border: 1px solid transparent; border-radius: 10px; color: var(--ink); text-decoration: none; line-height: 1.35; }
-    .tool-link.active, .tool-link:hover, .tool-link:focus-visible { border-color: rgba(255, 114, 0, .45); background: rgba(255, 114, 0, .12); outline: none; }
-    .saved-link { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
-    @media (max-width: 700px) {
-      .app { display: block; }
-      nav { position: static; display: flex; height: auto; min-height: 0; align-items: center; gap: 10px; padding: 14px 16px; overflow-x: auto; }
-      .brand { flex: 0 0 auto; margin: 0 8px 0 0; }
-      .nav-label { display: none; }
-      .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
-      .saved-link { margin-top: 0; padding-top: 10px; border-top: 0; }
+    :root {
+      --ink: #edf2f7;
+      --muted: #9eacbd;
+      --panel: rgba(21, 29, 39, .86);
+      --panel-2: #1b2633;
+      --line: #2b3a4b;
+      --orange: #ff7200;
+      --orange-soft: rgba(255, 114, 0, .12);
     }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    .hidden { display: none !important; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 4%, rgba(255, 114, 0, .13), transparent 28rem),
+        #0d141c;
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .tool-app { display: grid; grid-template-columns: minmax(220px, 240px) minmax(0, 1fr); min-height: 100vh; }
+    .tool-nav {
+      position: sticky;
+      top: 0;
+      display: flex;
+      height: 100vh;
+      min-height: 100vh;
+      flex-direction: column;
+      padding: 28px 16px;
+      border-right: 1px solid var(--line);
+      background: rgba(17, 26, 36, .86);
+    }
+    .tool-nav-brand, .brand {
+      margin: 0 8px 28px;
+      color: var(--orange);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .tool-back {
+      display: inline-block;
+      margin: 0 8px 24px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .tool-nav-label {
+      margin: 18px 8px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .tool-link {
+      display: block;
+      margin: 0 2px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: var(--ink);
+      text-decoration: none;
+      line-height: 1.35;
+    }
+    .tool-link.active, .tool-link:hover, .tool-link:focus-visible {
+      border-color: rgba(255, 114, 0, .45);
+      background: var(--orange-soft);
+      outline: none;
+    }
+    .saved-link { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
+    .tool-page { min-width: 0; }
+    .workspace-header {
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      padding: 28px clamp(18px, 4vw, 48px) 0;
+    }
+    .workspace-header .brand { margin: 0; }
+    .tool-section {
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      padding: 20px clamp(18px, 4vw, 48px) 54px;
+    }
+    .app-container {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(360px, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    .control-panel, .preview-wrapper, .image-controls-section {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+    }
+    .control-panel { padding: 22px; }
+    #download-carousel-btn { margin-top: 18px; }
+    h2 { margin: 0 0 18px; font-size: clamp(24px, 3vw, 34px); line-height: 1.05; letter-spacing: -.04em; }
+    label, .section-title {
+      display: block;
+      margin: 14px 0 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    input, textarea, select, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: var(--panel-2);
+      font: inherit;
+    }
+    input[type="file"] { padding: 8px; color: var(--muted); }
+    input[type="color"] { min-height: 42px; padding: 4px; }
+    textarea { min-height: 74px; resize: vertical; }
+    button { cursor: pointer; font-weight: 800; }
+    button:hover, button:focus-visible { border-color: var(--orange); outline: none; }
+    .tab-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tab-btn.active, .preset-btn.active, #download-carousel-btn {
+      color: #141a21;
+      border-color: var(--orange);
+      background: var(--orange);
+    }
+    .scrollable-controls { max-height: 560px; overflow: auto; }
+    .preview-wrapper { padding: 22px; }
+    .carousel-canvas {
+      width: 360px;
+      max-width: 100%;
+      height: 480px;
+      margin: 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #151821;
+    }
+    .image-controls-section { margin: 18px auto 0; max-width: 360px; padding: 16px; }
+    .slider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input[type="range"] { padding: 0; accent-color: var(--orange); }
+    @media (max-width: 820px) {
+      .tool-app { display: block; }
+      .tool-nav { position: static; height: auto; min-height: 0; }
+      .app-container { grid-template-columns: 1fr; }
+      .carousel-canvas { margin: 0 auto; }
+    }
+    .layout-grid, .input-section, .upload-group { display: flex; flex-direction: column; gap: 10px; }
+    .layout-grid { margin-bottom: 14px; }
+    .tab-group { background: #0f1117; padding: 4px; }
+    .tab-btn, .preset-btn { text-align: left; }
+    .preview-wrapper { position: relative; display: flex; min-height: 524px; flex-direction: column; gap: 18px; }
+    .carousel-canvas { position: relative; }
+    #carousel-canvas { position: absolute; left: -10000px; top: 22px; opacity: 0; pointer-events: none; }
+    #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: 360px; height: 480px; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 14px; background: #0f1117; }
+    .carousel-canvas.mode-hook { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1b1e29, #0a0c10); }
+    .bg-img-container, .overlay { position: absolute; inset: 0; }
+    .bg-img-container { overflow: hidden; z-index: 0; }
+    .bg-img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+    .overlay { z-index: 1; background: rgba(0, 0, 0, .4); }
+    .canvas-content { position: relative; z-index: 5; width: 100%; padding: 10px; }
+    #view-hook { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 25px; text-align: center; }
+    .brand-badge { padding: 6px 14px; border-radius: 20px; color: #fff; background: var(--orange); font-weight: 900; }
+    #view-hook h1 { margin: 0; font-size: 2.5rem; line-height: 1.05; }
+    #view-hook p { margin: 0; color: #d1d5db; font-size: .85rem; }
+    #view-product { display: flex; align-items: flex-end; height: 100%; pointer-events: none; }
+    .card-glass { display: flex; width: 100%; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.15); border-radius: 8px; background: rgba(15,17,23,.94); }
+    .card-glass h2 { margin: 0; font-size: 1.3rem; line-height: 1; }
+    .card-glass p { margin: 0; color: #d1d5db; font-size: .72rem; line-height: 1.2; }
+    .prod-badge { color: var(--orange); font-size: .68rem; font-weight: 900; }
+    .layout-studio-container { position: absolute; inset: 10px 10px 80px; z-index: 2; }
+    .photo-box { position: relative; width: 100%; height: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; background: #0f1117; }
+    .blur-backdrop { position: absolute; inset: -10px; z-index: 1; width: calc(100% + 20px); height: calc(100% + 20px); object-fit: cover; filter: blur(14px) brightness(.4); }
+    .img-wrapper { position: relative; z-index: 2; width: 100%; height: 100%; overflow: hidden; }
+    .img-wrapper img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .photo-tag { position: absolute; top: 6px; left: 6px; z-index: 10; padding: 3px 8px; border-radius: 4px; color: #fff; background: rgba(0,0,0,.85); font-size: .62rem; font-weight: 900; }
+    .carousel-canvas.bg-dark-clean { background: #0f1117; }
+    .carousel-canvas.bg-cad-grid { background-color: #0d1017; background-image: linear-gradient(rgba(255,94,0,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,94,0,.12) 1px, transparent 1px); background-size: 20px 20px; }
+    .carousel-canvas.bg-geo-diagonal { background: linear-gradient(135deg, #1b1e29, #0a0c10); }
+    .carousel-canvas.bg-spotlight { background: radial-gradient(circle at 50% 35%, #2a2f42, #0f1117 80%); }
+    .layout-1-vertical .layout-studio-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .layout-1-horizontal .layout-studio-container { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+    .layout-2 .layout-studio-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 155px 1fr; gap: 8px; }
+    .layout-2 .box-3 { grid-column: 1 / 3; position: relative; }
+    .layout-3 .layout-studio-container { display: flex; flex-direction: column; gap: 8px; }
+    .layout-3 .box-1 { flex: .8; }
+    .layout-3 .box-2 { flex: 1.5; border: 2px solid var(--orange); }
+    .layout-2 .inset-stack-right { display: flex; position: absolute; top: 10px; right: 10px; bottom: 10px; z-index: 6; width: 72px; flex-direction: column; gap: 8px; }
+    .layout-2 .inset-stack-right .photo-box { flex: 1; border: 2px solid #fff; }
+    @media (max-width: 480px) { .carousel-canvas { height: min(480px, 125vw); } #view-hook h1 { font-size: 2rem; } }
   </style>
 </head>
 <body>
-  <div class="app">
-    <nav aria-label="Tool navigation">
-      <p class="brand">PinoyProto 3D</p>
-      <a class="back" href="../index.html">← Return to home</a>
-      <p class="nav-label">Statistics</p>
+  <div class="tool-app">
+    <nav class="tool-nav" aria-label="Tool navigation">
+      <p class="tool-nav-brand">PinoyProto 3D</p>
+      <a class="tool-back" href="../index.html">← Return to home</a>
+      <p class="tool-nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
       <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
-      <p class="nav-label">Tools</p>
+      <p class="tool-nav-label">Tools</p>
       <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link active" href="new-tool.html" aria-current="page">New Tool</a>
+      <a class="tool-link active" href="new-tool.html" aria-current="page">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link" href="quotation-records.html#transactions">Transactions Done</a>
     </nav>
-    <main></main>
+    <div class="tool-page">
+      <header class="workspace-header">
+        <div class="brand">PINOYPROTO 3D <span>STUDIO</span></div>
+      </header>
+
+  <main class="tool-section">
+    <div class="app-container">
+      
+      <!-- CONTROL PANEL -->
+      <div class="control-panel">
+        <h2>Carousel & Layout Builder (3:4)</h2>
+        
+        <!-- Slide Switch Tabs -->
+        <div class="tab-group">
+          <button id="tab-hook" class="tab-btn active" type="button" role="tab" aria-selected="true">Slide 1 (Hook)</button>
+          <button id="tab-product" class="tab-btn" type="button" role="tab" aria-selected="false">Product Slide</button>
+        </div>
+
+        <div class="scrollable-controls">
+          <!-- SLIDE 1 (HOOK) INPUTS -->
+          <div id="section-hook" class="input-section">
+            <label>Main Question / Hook</label>
+            <textarea id="input-hook-title" rows="2">NEED A 3D DESIGN FOR YOUR PROJECT?</textarea>
+
+            <label>Subtext / Lead-in</label>
+            <input type="text" id="input-hook-sub" value="Swipe to see our recent 3D prints & custom models ➡️" />
+
+            <label>Background Image</label>
+            <input type="file" id="input-hook-bg" accept="image/*" />
+          </div>
+
+          <!-- PRODUCT SLIDE INPUTS -->
+          <div id="section-product" class="input-section hidden">
+            <label>Product / Project Name</label>
+            <input type="text" id="input-prod-title" value="CUSTOM MECHANICAL BRACKET" />
+
+            <label>Description / Specs</label>
+            <textarea id="input-prod-desc" rows="2">PETG Material | High Stress Resistance | 0.2mm Layer Height</textarea>
+
+            <label>Call to Action / Badge</label>
+            <input type="text" id="input-prod-cta" value="AVAILABLE AT PINOYPROTO 3D" />
+
+            <!-- INTEGRATED IMAGE DESIGNER CONTROLS -->
+            <div class="image-controls-section">
+              <div class="section-title">Design Highlight Layouts</div>
+
+              <!-- LAYOUT TEMPLATES -->
+              <label>Highlight Layout Templates</label>
+              <div class="layout-grid">
+                <button class="preset-btn active" data-layout="layout-1-vertical">Layout 1A: Before & After Split (Vertical)</button>
+                <button class="preset-btn" data-layout="layout-1-horizontal">Layout 1B: Before & After Stack (Horizontal)</button>
+                <button class="preset-btn" data-layout="layout-2">Layout 2: Reference Multi-Panel Showcase</button>
+                <button class="preset-btn" data-layout="layout-3">Layout 3: Reference vs Final Print</button>
+              </div>
+
+              <!-- PHOTO UPLOADS & BADGES -->
+              <div class="upload-group">
+                <label>Photo 1 (Top Left)</label>
+                <input type="file" id="img-input-1" accept="image/*" />
+                <select id="label-select-1" class="label-dropdown">
+                  <option value="BEFORE: CLIENT SKETCH">Badge: BEFORE: CLIENT SKETCH</option>
+                  <option value="REFERENCE">Badge: REFERENCE</option>
+                  <option value="SKETCH">Badge: SKETCH</option>
+                  <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
+                </select>
+
+                <label>Photo 2 (Top Right)</label>
+                <input type="file" id="img-input-2" accept="image/*" />
+                <select id="label-select-2" class="label-dropdown">
+                  <option value="AFTER: 3D MODEL">Badge: AFTER: 3D MODEL</option>
+                  <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
+                  <option value="EXPLODED CAD VIEW">Badge: EXPLODED CAD VIEW</option>
+                  <option value="FINAL 3D PRINT">Badge: FINAL 3D PRINT</option>
+                </select>
+
+                <label>Photo 3 (Bottom Main Showcase)</label>
+                <input type="file" id="img-input-3" accept="image/*" />
+                <select id="label-select-3" class="label-dropdown">
+                  <option value="AFTER: OUR 3D PRINTS">Badge: AFTER: OUR 3D PRINTS</option>
+                  <option value="FINAL 3D PRINT">Badge: FINAL 3D PRINT</option>
+                  <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
+                </select>
+
+                <label>Photo 4 (Bottom Right - Inset Top)</label>
+                <input type="file" id="img-input-4" accept="image/*" />
+
+                <label>Photo 5 (Bottom Right - Inset Bottom)</label>
+                <input type="file" id="img-input-5" accept="image/*" />
+              </div>
+
+              <label>Background Pattern</label>
+              <select id="bg-style-select">
+                <option value="bg-dark-clean">Minimal Dark Studio</option>
+                <option value="bg-cad-grid">CAD Blueprint Grid</option>
+                <option value="bg-geo-diagonal">Diagonal Slash & Accent</option>
+                <option value="bg-spotlight">Center Spotlight Radial</option>
+              </select>
+
+              <div class="control-row">
+                <label>Accent Line / Border Color</label>
+                <input type="color" id="accent-color" value="#ff5500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="download-carousel-btn" class="action-btn">Export Slide (3:4 PNG)</button>
+      </div>
+
+      <!-- PREVIEW CANVAS AREA WITH UNDERNEATH CONTROLS -->
+      <div class="preview-wrapper">
+        <div id="carousel-canvas" class="carousel-canvas mode-hook layout-1-vertical bg-dark-clean">
+          <div id="canvas-overlay" class="overlay"></div>
+          
+          <!-- Hook Background Image Container -->
+          <div class="bg-img-container">
+            <img id="preview-bg" src="" alt="Background Image" class="bg-img hidden" />
+          </div>
+          <!-- INTEGRATED LAYOUT STUDIO CONTAINERS -->
+          <div id="layout-studio-container" class="layout-studio-container hidden">
+            <!-- Top Box 1 -->
+            <div class="photo-box box-1 active-box" data-box="1">
+              <img id="bg-blur-1" class="blur-backdrop" src="placeholder.svg" alt="" />
+              <span id="badge-tag-1" class="photo-tag tag-top-left">BEFORE: CLIENT SKETCH</span>
+              <div class="img-wrapper">
+                <img id="prev-img-1" src="placeholder.svg" alt="Photo 1" />
+              </div>
+            </div>
+
+            <!-- Top Box 2 -->
+            <div class="photo-box box-2" data-box="2">
+              <img id="bg-blur-2" class="blur-backdrop" src="placeholder.svg" alt="" />
+              <span id="badge-tag-2" class="photo-tag tag-top-left">AFTER: 3D MODEL</span>
+              <div class="img-wrapper">
+                <img id="prev-img-2" src="placeholder.svg" alt="Photo 2" />
+              </div>
+            </div>
+
+            <!-- Bottom Main Showcase Box 3 -->
+            <div class="photo-box box-3" data-box="3">
+              <img id="bg-blur-3" class="blur-backdrop" src="placeholder.svg" alt="" />
+              <span id="badge-tag-3" class="photo-tag tag-top-left">AFTER: OUR 3D PRINTS</span>
+              <div class="img-wrapper">
+                <img id="prev-img-3" src="placeholder.svg" alt="Photo 3" />
+              </div>
+              
+              <!-- Embedded Stacked Right Insets for Layout 2 -->
+              <div class="inset-stack-right">
+                <div class="photo-box box-4" data-box="4">
+                  <img id="bg-blur-4" class="blur-backdrop" src="placeholder.svg" alt="" />
+                  <div class="img-wrapper">
+                    <img id="prev-img-4" src="placeholder.svg" alt="Inset 1" />
+                  </div>
+                </div>
+                <div class="photo-box box-5" data-box="5">
+                  <img id="bg-blur-5" class="blur-backdrop" src="placeholder.svg" alt="" />
+                  <div class="img-wrapper">
+                    <img id="prev-img-5" src="placeholder.svg" alt="Inset 2" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SLIDE 1 (HOOK) CONTENT -->
+          <div id="view-hook" class="canvas-content">
+            <span class="brand-badge">PINOYPROTO 3D</span>
+            <h1 id="preview-hook-title">NEED A 3D DESIGN FOR YOUR PROJECT?</h1>
+            <p id="preview-hook-sub">Swipe to see our recent 3D prints & custom models ➡️</p>
+          </div>
+
+          <!-- PRODUCT SLIDE OVERLAY CARD -->
+          <div id="view-product" class="canvas-content hidden">
+            <div class="card-glass">
+              <h2 id="preview-prod-title">CUSTOM MECHANICAL BRACKET</h2>
+              <p id="preview-prod-desc">PETG Material | High Stress Resistance | 0.2mm Layer Height</p>
+              <div class="prod-badge" id="preview-prod-cta">AVAILABLE AT PINOYPROTO 3D</div>
+            </div>
+          </div>
+
+        </div>
+        <canvas id="live-preview-canvas" width="1080" height="1440" aria-label="High-resolution 3:4 preview"></canvas>
+
+        <!-- IMAGE ADJUSTMENT PANEL BELOW PREVIEW CANVAS -->
+        <div class="preview-adjustments-panel">
+          <!-- Slide 1 Controls -->
+          <div id="adjustments-hook" class="image-controls-section">
+            <div class="section-title">Slide 1 Background Adjustments</div>
+            <div class="slider-grid">
+              <div class="control-row-slider">
+                <label for="slider-zoom">Zoom</label>
+                <input type="range" id="slider-zoom" min="1" max="2" step="0.05" value="1" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-dim">Dim</label>
+                <input type="range" id="slider-dim" min="0" max="0.9" step="0.05" value="0.4" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-pan-x">Pan X</label>
+                <input type="range" id="slider-pan-x" min="-50" max="50" step="1" value="0" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-pan-y">Pan Y</label>
+                <input type="range" id="slider-pan-y" min="-50" max="50" step="1" value="0" />
+              </div>
+              <div class="control-row-slider full-width-slider">
+                <label for="slider-blur">Blur (px)</label>
+                <input type="range" id="slider-blur" min="0" max="20" step="1" value="0" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Slide Individual Photo Controls -->
+          <div id="adjustments-product" class="image-controls-section hidden">
+            <div class="section-title">Individual Photo Adjustments</div>
+            
+            <div class="control-row-slider full-width-slider" style="margin-bottom: 6px;">
+              <label for="select-target-box">Target Photo Frame</label>
+              <select id="select-target-box" class="label-dropdown">
+                <option value="1">Photo 1 (Top Left)</option>
+                <option value="2">Photo 2 (Top Right)</option>
+                <option value="3">Photo 3 (Bottom Main)</option>
+                <option value="4">Photo 4 (Inset Top)</option>
+                <option value="5">Photo 5 (Inset Bottom)</option>
+              </select>
+            </div>
+
+            <div class="slider-grid">
+              <div class="control-row-slider">
+                <label for="slider-prod-zoom">Zoom</label>
+                <input type="range" id="slider-prod-zoom" min="1" max="3" step="0.05" value="1" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-prod-dim">Dim</label>
+                <input type="range" id="slider-prod-dim" min="0" max="0.9" step="0.05" value="0" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-prod-pan-x">Pan X</label>
+                <input type="range" id="slider-prod-pan-x" min="-100" max="100" step="1" value="0" />
+              </div>
+              <div class="control-row-slider">
+                <label for="slider-prod-pan-y">Pan Y</label>
+                <input type="range" id="slider-prod-pan-y" min="-100" max="100" step="1" value="0" />
+              </div>
+              <div class="control-row-slider full-width-slider">
+                <label for="slider-prod-blur">Blur (px)</label>
+                <input type="range" id="slider-prod-blur" min="0" max="20" step="1" value="0" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+    </div>
   </div>
+  <script>
+    (() => {
+      const $ = (selector) => document.querySelector(selector);
+      const all = (selector) => [...document.querySelectorAll(selector)];
+      const canvas = $('#carousel-canvas');
+      const hookTab = $('#tab-hook');
+      const productTab = $('#tab-product');
+      const hookSection = $('#section-hook');
+      const productSection = $('#section-product');
+      const hookView = $('#view-hook');
+      const productView = $('#view-product');
+      const hookAdjustments = $('#adjustments-hook');
+      const productAdjustments = $('#adjustments-product');
+      const exportCanvas = $('#live-preview-canvas');
+      const exportContext = exportCanvas.getContext('2d');
+
+      function drawContainedImage(context, image, x, y, width, height, cover = false) {
+        if (!image.complete || !image.naturalWidth) return;
+        const ratio = cover
+          ? Math.max(width / image.naturalWidth, height / image.naturalHeight)
+          : Math.min(width / image.naturalWidth, height / image.naturalHeight);
+        const drawWidth = image.naturalWidth * ratio;
+        const drawHeight = image.naturalHeight * ratio;
+        context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+      }
+
+      function drawFittedText(context, text, x, y, maxWidth, lineHeight) {
+        const words = text.trim().split(/\s+/);
+        const lines = [];
+        let line = '';
+        words.forEach((word) => {
+          const candidate = line ? `${line} ${word}` : word;
+          if (line && context.measureText(candidate).width > maxWidth) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = candidate;
+          }
+        });
+        if (line) lines.push(line);
+        lines.forEach((entry, index) => context.fillText(entry, x, y + index * lineHeight));
+        return lines.length;
+      }
+
+      function applyCanvasTransform(context, element, x, y, width, height) {
+        const transform = getComputedStyle(element).transform;
+        if (transform === 'none') return;
+        const match = transform.match(/^matrix\(([^)]+)\)$/);
+        if (!match) return;
+        const values = match[1].split(',').map(Number);
+        if (values.length !== 6 || values.some(Number.isNaN)) return;
+        context.translate(x + width / 2, y + height / 2);
+        context.transform(...values);
+        context.translate(-(x + width / 2), -(y + height / 2));
+      }
+
+      function roundRect(context, x, y, width, height, radius) {
+        context.beginPath();
+        context.roundRect(x, y, width, height, radius);
+      }
+
+      function drawPreviewBackground(context, width, height) {
+        const styles = getComputedStyle(canvas);
+        if (canvas.classList.contains('bg-cad-grid')) {
+          context.fillStyle = '#0d1017';
+          context.fillRect(0, 0, width, height);
+          context.strokeStyle = 'rgba(255,94,0,.12)';
+          context.lineWidth = 1;
+          for (let x = 0; x <= width; x += 20) {
+            context.beginPath();
+            context.moveTo(x, 0);
+            context.lineTo(x, height);
+            context.stroke();
+          }
+          for (let y = 0; y <= height; y += 20) {
+            context.beginPath();
+            context.moveTo(0, y);
+            context.lineTo(width, y);
+            context.stroke();
+          }
+          return;
+        }
+        if (canvas.classList.contains('bg-spotlight')) {
+          const gradient = context.createRadialGradient(width / 2, height * .35, 0, width / 2, height * .35, height);
+          gradient.addColorStop(0, '#2a2f42');
+          gradient.addColorStop(1, '#0f1117');
+          context.fillStyle = gradient;
+        } else if (canvas.classList.contains('bg-geo-diagonal')) {
+          const gradient = context.createLinearGradient(0, 0, width, height);
+          gradient.addColorStop(0, '#1b1e29');
+          gradient.addColorStop(1, '#0a0c10');
+          context.fillStyle = gradient;
+        } else {
+          context.fillStyle = styles.backgroundColor || '#0f1117';
+        }
+        context.fillRect(0, 0, width, height);
+      }
+
+      function drawCurrentPreview() {
+        const context = exportContext;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = exportCanvas.width / rect.width;
+        const scaleY = exportCanvas.height / rect.height;
+        context.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+        context.save();
+        context.scale(scaleX, scaleY);
+        drawPreviewBackground(context, rect.width, rect.height);
+
+        if (!productView.classList.contains('hidden')) {
+          const canvasRect = canvas.getBoundingClientRect();
+          all('.photo-box').forEach((box) => {
+            const boxRect = box.getBoundingClientRect();
+            const x = boxRect.left - canvasRect.left;
+            const y = boxRect.top - canvasRect.top;
+            const image = box.querySelector('.img-wrapper img');
+            const backdrop = box.querySelector('.blur-backdrop');
+            context.fillStyle = '#0f1117';
+            context.fillRect(x, y, boxRect.width, boxRect.height);
+            context.save();
+            context.beginPath();
+            context.rect(x, y, boxRect.width, boxRect.height);
+            context.clip();
+            context.filter = getComputedStyle(backdrop).filter;
+            applyCanvasTransform(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20);
+            drawContainedImage(context, backdrop, x - 10, y - 10, boxRect.width + 20, boxRect.height + 20, true);
+            context.restore();
+            context.strokeStyle = getComputedStyle(box).borderColor;
+            context.lineWidth = 1;
+            roundRect(context, x, y, boxRect.width, boxRect.height, 10);
+            context.stroke();
+            context.save();
+            context.beginPath();
+            context.rect(x, y, boxRect.width, boxRect.height);
+            context.clip();
+            applyCanvasTransform(context, image, x, y, boxRect.width, boxRect.height);
+            drawContainedImage(context, image, x, y, boxRect.width, boxRect.height);
+            context.restore();
+
+            const tag = box.querySelector('.photo-tag');
+            if (tag && getComputedStyle(tag).display !== 'none') {
+              const tagStyle = getComputedStyle(tag);
+              context.font = `${tagStyle.fontWeight} ${tagStyle.fontSize} ${tagStyle.fontFamily}`;
+              const tagX = x + parseFloat(tagStyle.left);
+              const tagY = y + parseFloat(tagStyle.top) + parseFloat(tagStyle.fontSize) + 6;
+              const tagWidth = Math.min(boxRect.width - 12, context.measureText(tag.textContent).width + 16);
+              context.fillStyle = 'rgba(0,0,0,.85)';
+              context.fillRect(tagX, tagY - parseFloat(tagStyle.fontSize) - 6, tagWidth, parseFloat(tagStyle.fontSize) + 10);
+              context.fillStyle = '#fff';
+              drawFittedText(context, tag.textContent, tagX + 8, tagY, tagWidth - 16, parseFloat(tagStyle.fontSize) + 2);
+            }
+          });
+          const card = $('.card-glass');
+          const cardRect = card.getBoundingClientRect();
+          const cardStyle = getComputedStyle(card);
+          const cardX = cardRect.left - canvas.getBoundingClientRect().left;
+          const cardY = cardRect.top - canvas.getBoundingClientRect().top;
+          context.fillStyle = cardStyle.backgroundColor;
+          roundRect(context, cardX, cardY, cardRect.width, cardRect.height, 8);
+          context.fill();
+          context.strokeStyle = 'rgba(255,255,255,.15)';
+          context.lineWidth = 1;
+          context.stroke();
+          context.fillStyle = '#edf2f7';
+          context.font = `900 ${getComputedStyle($('#preview-prod-title')).fontSize} ${cardStyle.fontFamily}`;
+          const titleStyle = getComputedStyle($('#preview-prod-title'));
+          context.font = `900 ${titleStyle.fontSize} ${cardStyle.fontFamily}`;
+          let textY = cardY + parseFloat(titleStyle.fontSize);
+          textY += drawFittedText(context, $('#preview-prod-title').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(titleStyle.fontSize) + 2) * (parseFloat(titleStyle.fontSize) + 2);
+          context.fillStyle = '#d1d5db';
+          const descStyle = getComputedStyle($('#preview-prod-desc'));
+          context.font = `${descStyle.fontSize} ${cardStyle.fontFamily}`;
+          textY += drawFittedText(context, $('#preview-prod-desc').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(descStyle.fontSize) + 2) * (parseFloat(descStyle.fontSize) + 2);
+          context.fillStyle = getComputedStyle($('#preview-prod-cta')).color;
+          const ctaStyle = getComputedStyle($('#preview-prod-cta'));
+          context.font = `900 ${ctaStyle.fontSize} ${cardStyle.fontFamily}`;
+          drawFittedText(context, $('#preview-prod-cta').textContent, cardX + 12, textY, cardRect.width - 24, parseFloat(ctaStyle.fontSize) + 2);
+        } else {
+          const background = $('#preview-bg');
+          context.save();
+          context.beginPath();
+          context.rect(0, 0, rect.width, rect.height);
+          context.clip();
+          context.filter = getComputedStyle(background).filter;
+          applyCanvasTransform(context, background, 0, 0, rect.width, rect.height);
+          drawContainedImage(context, background, 0, 0, rect.width, rect.height, true);
+          context.restore();
+          context.fillStyle = getComputedStyle($('#canvas-overlay')).backgroundColor;
+          context.fillRect(0, 0, rect.width, rect.height);
+          const content = $('#view-hook');
+          const contentRect = content.getBoundingClientRect();
+          const contentStyle = getComputedStyle(content);
+          context.textAlign = 'center';
+          const badge = $('.brand-badge');
+          const badgeStyle = getComputedStyle(badge);
+          const badgeY = contentRect.top - rect.top;
+          const badgeWidth = Math.min(rect.width - 40, context.measureText(badge.textContent).width + 28);
+          context.fillStyle = badgeStyle.backgroundColor;
+          roundRect(context, (rect.width - badgeWidth) / 2, badgeY, badgeWidth, 32, 20);
+          context.fill();
+          context.fillStyle = '#fff';
+          context.font = `900 ${badgeStyle.fontSize} ${contentStyle.fontFamily}`;
+          drawFittedText(context, badge.textContent, rect.width / 2, badgeY + 21, rect.width - 40, 18);
+          context.font = `900 ${getComputedStyle($('#preview-hook-title')).fontSize} ${contentStyle.fontFamily}`;
+          const titleY = badgeY + 72;
+          const titleLines = drawFittedText(context, $('#preview-hook-title').textContent, rect.width / 2, titleY, rect.width - 40, 40);
+          context.fillStyle = '#d1d5db';
+          context.font = `${getComputedStyle($('#preview-hook-sub')).fontSize} ${contentStyle.fontFamily}`;
+          drawFittedText(context, $('#preview-hook-sub').textContent, rect.width / 2, titleY + titleLines * 40 + 18, rect.width - 40, 18);
+          context.textAlign = 'start';
+        }
+        context.restore();
+      }
+
+      function setSlide(slide) {
+        const product = slide === 'product';
+        hookTab.classList.toggle('active', !product);
+        productTab.classList.toggle('active', product);
+        hookTab.setAttribute('aria-selected', String(!product));
+        productTab.setAttribute('aria-selected', String(product));
+        hookSection.classList.toggle('hidden', product);
+        productSection.classList.toggle('hidden', !product);
+        hookView.classList.toggle('hidden', product);
+        productView.classList.toggle('hidden', !product);
+        $('#layout-studio-container').classList.toggle('hidden', !product);
+        hookAdjustments.classList.toggle('hidden', product);
+        productAdjustments.classList.toggle('hidden', !product);
+        canvas.classList.toggle('mode-hook', !product);
+        drawCurrentPreview();
+      }
+
+      function bindText(input, output) {
+        $(input).addEventListener('input', (event) => {
+          $(output).textContent = event.target.value;
+          drawCurrentPreview();
+        });
+      }
+
+      function applyHookImage() {
+        const image = $('#preview-bg');
+        image.style.transform = `scale(${$('#slider-zoom').value}) translate(${$('#slider-pan-x').value}px, ${$('#slider-pan-y').value}px)`;
+        image.style.filter = `blur(${$('#slider-blur').value}px)`;
+        $('#canvas-overlay').style.background = `rgba(0,0,0,${$('#slider-dim').value})`;
+        drawCurrentPreview();
+      }
+
+      function applyProductImage() {
+        const id = $('#select-target-box').value;
+        const image = $(`#prev-img-${id}`);
+        const backdrop = $(`#bg-blur-${id}`);
+        image.style.objectFit = 'contain';
+        image.style.transform = `scale(${$('#slider-prod-zoom').value}) translate(${$('#slider-prod-pan-x').value}px, ${$('#slider-prod-pan-y').value}px)`;
+        image.style.filter = `blur(${$('#slider-prod-blur').value}px) brightness(${1 - $('#slider-prod-dim').value})`;
+        backdrop.style.display = 'block';
+        drawCurrentPreview();
+      }
+
+      hookTab.addEventListener('click', () => setSlide('hook'));
+      productTab.addEventListener('click', () => setSlide('product'));
+      bindText('#input-hook-title', '#preview-hook-title');
+      bindText('#input-hook-sub', '#preview-hook-sub');
+      bindText('#input-prod-title', '#preview-prod-title');
+      bindText('#input-prod-desc', '#preview-prod-desc');
+      bindText('#input-prod-cta', '#preview-prod-cta');
+      $('#input-hook-bg').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        $('#preview-bg').src = url;
+        $('#preview-bg').classList.remove('hidden');
+        $('#preview-bg').addEventListener('load', drawCurrentPreview, { once: true });
+      });
+      for (let id = 1; id <= 5; id += 1) {
+        $(`#img-input-${id}`).addEventListener('change', (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          $(`#prev-img-${id}`).src = url;
+          $(`#bg-blur-${id}`).src = url;
+          $(`#prev-img-${id}`).addEventListener('load', drawCurrentPreview, { once: true });
+          $(`#bg-blur-${id}`).addEventListener('load', drawCurrentPreview, { once: true });
+        });
+      }
+      all('#label-select-1, #label-select-2, #label-select-3').forEach((select) => {
+        select.addEventListener('change', (event) => {
+          $(`#badge-tag-${select.id.slice(-1)}`).textContent = event.target.value;
+          drawCurrentPreview();
+        });
+      });
+      all('.preset-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          all('.preset-btn').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          canvas.className = `carousel-canvas ${productView.classList.contains('hidden') ? 'mode-hook' : ''} ${button.dataset.layout} ${$('#bg-style-select').value}`;
+          drawCurrentPreview();
+        });
+      });
+      $('#bg-style-select').addEventListener('change', (event) => {
+        canvas.classList.remove('bg-dark-clean', 'bg-cad-grid', 'bg-geo-diagonal', 'bg-spotlight');
+        canvas.classList.add(event.target.value);
+        drawCurrentPreview();
+      });
+      $('#accent-color').addEventListener('input', (event) => {
+        all('.box-2, .box-4, .box-5').forEach((box) => { box.style.borderColor = event.target.value; });
+        drawCurrentPreview();
+      });
+      all('#slider-zoom, #slider-dim, #slider-pan-x, #slider-pan-y, #slider-blur').forEach((input) => input.addEventListener('input', applyHookImage));
+      all('#slider-prod-zoom, #slider-prod-dim, #slider-prod-pan-x, #slider-prod-pan-y, #slider-prod-blur, #select-target-box').forEach((input) => input.addEventListener('input', applyProductImage));
+      $('#download-carousel-btn').addEventListener('click', async () => {
+        const button = $('#download-carousel-btn');
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Exporting...';
+        try {
+          drawCurrentPreview();
+          const blob = await new Promise((resolve, reject) => {
+            exportCanvas.toBlob((result) => result ? resolve(result) : reject(new Error('PNG export failed.')), 'image/png');
+          });
+          if (!blob) throw new Error('PNG snapshot could not be created.');
+
+          const link = document.createElement('a');
+          const product = !productView.classList.contains('hidden');
+          link.download = product ? 'carousel-product-slide.png' : 'carousel-slide-1-hook.png';
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+          window.alert(`Could not export the slide as PNG: ${error.message}`);
+        } finally {
+          button.disabled = false;
+          button.textContent = originalLabel;
+        }
+      });
+      applyHookImage();
+      applyProductImage();
+      setSlide('hook');
+      drawCurrentPreview();
+    })();
+  </script>
 </body>
 </html>
