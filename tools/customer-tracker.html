@@ -127,6 +127,7 @@
       <div class="page-heading"><div><h1>Customer Tracker</h1><p class="intro">Track every customer project from inquiry to completion.</p></div><div class="date-note">Saved in Supabase</div></div>
       <section class="panel auth-panel" aria-label="Admin login">
         <h2>Admin access</h2>
+        <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
         <form id="loginForm">
           <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
           <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
@@ -161,12 +162,18 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
     const SUPABASE_URL = "https://cifxwhhdkmecgomwesnk.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    window.installAdminSessionTimeout(supabaseClient);
+    window.addEventListener("admin-idle-timeout", () => {
+      statusElement.textContent = "Admin access ended after 15 minutes of inactivity. Sign in again to continue.";
+      statusElement.className = "status";
+    });
     const STORAGE_BUCKET = "customer-model-files";
     const STAGE_PROGRESS = { "Inquiry":0, "Quotation Sent":20, "Paid Downpayment":40, "Paid Fullpayment":55, "In production":70, "For delivery":85, "Completed":100 };
     const STAGE_ORDER = ["Inquiry", "Quotation Sent", "Paid Downpayment", "Paid Fullpayment", "In production", "For delivery", "Completed"];
@@ -648,7 +655,7 @@
         renderTrackers();
       }
     });
-    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
+    supabaseClient.auth.onAuthStateChange((_event, authSession) => setAdminState(authSession));
     (async () => {
       await loadTrackers();
       renderTrackers();

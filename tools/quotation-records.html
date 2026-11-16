@@ -124,6 +124,7 @@
       </div>
       <section class="admin-panel" aria-label="Admin login">
         <h2>Admin access</h2>
+        <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
         <form id="loginForm">
           <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
           <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
@@ -148,15 +149,21 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    window.installAdminSessionTimeout(supabaseClient);
     const recordsElement = document.getElementById("records");
     const recordsPagination = document.getElementById("recordsPagination");
     const paginationLabel = document.getElementById("paginationLabel");
     const previousPageButton = document.getElementById("previousPageButton");
     const nextPageButton = document.getElementById("nextPageButton");
     const statusElement = document.getElementById("status");
+    window.addEventListener("admin-idle-timeout", () => {
+      statusElement.textContent = "Admin access ended after 15 minutes of inactivity. Sign in again to continue.";
+      statusElement.className = "status";
+    });
     const searchInput = document.getElementById("searchInput");
     const loginForm = document.getElementById("loginForm");
     const emailInput = document.getElementById("emailInput");
@@ -599,6 +606,7 @@
         pdfButton.disabled = false;
       }
     });
+    supabaseClient.auth.onAuthStateChange((_event, authSession) => setAdminState(authSession));
     supabaseClient.auth.getSession().then(({ data }) => {
       setAdminState(data.session);
       setView("saved");

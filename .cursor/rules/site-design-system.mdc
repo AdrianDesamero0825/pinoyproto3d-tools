@@ -7,9 +7,11 @@ alwaysApply: false
 # Shared website design system
 
 - Use `assets/css/design-system.css` as the source of shared color, typography, spacing, radius, shadow, sidebar, and content-width tokens.
+- Keep the visual direction corporate and restrained: deep navy and slate surfaces, orange reserved for key actions and selected states, clear heading hierarchy, and subtle borders and shadows.
 - Use CSS Grid for page and content layouts and Flexbox for aligned, flowing component rows. Include `minmax(0, 1fr)` where grid children must be allowed to shrink.
 - Prefer shared tokens over repeating literal values for common colors, spacing, radii, shadows, and layout dimensions.
 - Reuse the shared component treatments for cards and preview panels, form-control focus states, buttons, and image upload zones. Add shared styles to `assets/css/design-system.css` when a treatment should apply across pages.
 - Preserve clear hover, keyboard focus, disabled, drag-over, and selected states when updating interactive components.
+- Keep the shared mobile navigation breakpoint at 700px unless a page's content requires a documented exception.
 - Keep genuinely page-specific needs local, such as the quotation paper dimensions and carousel canvas aspect ratio.
 - Keep responsive behavior in CSS with consistent shared breakpoints unless a page has a clear content-specific reason to differ.

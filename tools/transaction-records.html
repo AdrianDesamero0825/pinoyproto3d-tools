@@ -68,6 +68,7 @@
       <div class="toolbar"><input id="searchInput" type="search" placeholder="Search project or customer" aria-label="Search transactions"></div>
       <section class="admin-panel" aria-label="Admin login">
         <h2>Admin access</h2>
+        <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
         <form id="loginForm"><input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" required><input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" required><button type="submit">Log in</button></form>
         <span class="admin-user" id="adminUser" hidden></span><button class="secondary" id="logoutButton" type="button" hidden>Log out</button>
       </section>
@@ -76,10 +77,16 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
     const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    window.installAdminSessionTimeout(supabaseClient);
     const transactionsElement = document.getElementById("transactions");
     const statusElement = document.getElementById("status");
+    window.addEventListener("admin-idle-timeout", () => {
+      statusElement.textContent = "Admin access ended after 15 minutes of inactivity. Sign in again to continue.";
+      statusElement.className = "status";
+    });
     const searchInput = document.getElementById("searchInput");
     const loginForm = document.getElementById("loginForm");
     const emailInput = document.getElementById("emailInput");
@@ -134,7 +141,7 @@
     loginForm.addEventListener("submit", async (event) => { event.preventDefault(); const { data, error } = await supabaseClient.auth.signInWithPassword({ email:emailInput.value.trim(), password:passwordInput.value }); if (error) { statusElement.textContent = `Login failed: ${error.message}`; statusElement.className = "status error"; return; } passwordInput.value = ""; setAdminState(data.session); });
     logoutButton.addEventListener("click", async () => { const { error } = await supabaseClient.auth.signOut(); if (error) { statusElement.textContent = `Could not log out: ${error.message}`; statusElement.className = "status error"; return; } setAdminState(null); });
     transactionsElement.addEventListener("click", async (event) => { const button = event.target.closest("[data-delete-id]"); if (!button) return; button.disabled = true; try { await deleteTransaction(button.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete transaction: ${error.message}`; statusElement.className = "status error"; button.disabled = false; } });
-    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
+    supabaseClient.auth.onAuthStateChange((_event, authSession) => setAdminState(authSession));
     load();
   </script>
 </body>

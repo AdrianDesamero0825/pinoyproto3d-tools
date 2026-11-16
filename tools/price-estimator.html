@@ -111,6 +111,7 @@
         <section class="printer-status-panel" aria-label="Bambu printer status">
           <div class="printer-status-head"><h2>Printer Status</h2><div class="printer-status-actions"><button class="printer-button" id="printerRefresh" type="button" hidden>Refresh</button><button class="printer-button" id="printerLogout" type="button" hidden>Sign out</button></div></div>
           <p class="printer-message notice" id="printerStatusMessage" aria-live="polite">Sign in as admin to view your A1 and P1S.</p>
+          <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
           <form class="printer-login" id="printerLoginForm">
             <label>Email<input id="printerEmail" type="email" autocomplete="username" required></label>
             <label>Password<input id="printerPassword" type="password" autocomplete="current-password" required></label>
@@ -167,10 +168,15 @@
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
     const printerSupabase = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    window.installAdminSessionTimeout(printerSupabase);
     const printerApiUrl = "https://expanding-sao-rss-strikes.trycloudflare.com/api/printers";
     const printerStatusMessage = document.getElementById("printerStatusMessage");
+    window.addEventListener("admin-idle-timeout", () => {
+      printerStatusMessage.textContent = "Admin access ended after 15 minutes of inactivity. Sign in again to continue.";
+    });
     const printerLoginForm = document.getElementById("printerLoginForm");
     const printerStatusGrid = document.getElementById("printerGrid");
     const printerRefreshButton = document.getElementById("printerRefresh");
