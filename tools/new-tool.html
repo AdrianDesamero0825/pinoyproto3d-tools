@@ -9,13 +9,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #edf2f7;
-      --muted: #9eacbd;
-      --panel: rgba(21, 29, 39, .86);
-      --panel-2: #1b2633;
-      --line: #2b3a4b;
-      --orange: #ff7200;
-      --orange-soft: rgba(255, 114, 0, .12);
+      --ink: var(--color-text);
+      --muted: var(--color-muted);
+      --panel: var(--color-panel-translucent);
+      --panel-2: var(--color-panel-raised);
+      --line: var(--color-border);
+      --orange: var(--color-accent);
+      --orange-soft: var(--color-accent-soft);
     }
 
     * { box-sizing: border-box; }
@@ -28,11 +28,11 @@
       color: var(--ink);
       background:
         radial-gradient(circle at 85% 4%, rgba(255, 114, 0, .13), transparent 28rem),
-        #0d141c;
-      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        var(--color-page);
+      font: 14px/1.45 var(--font-ui);
     }
 
-    .tool-app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+    .tool-app { display: grid; grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr); min-height: 100vh; }
     .tool-nav {
       position: sticky;
       top: 0;
@@ -43,9 +43,9 @@
       flex-direction: column;
       overflow-y: auto;
       overscroll-behavior: contain;
-      padding: 28px 16px;
+      padding: var(--space-nav-block) var(--space-4);
       border-right: 1px solid var(--line);
-      background: rgba(17, 26, 36, .86);
+      background: var(--color-navigation);
     }
     .tool-nav-brand {
       margin: 0 8px 28px;
@@ -92,7 +92,7 @@
     .saved-link { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
     .tool-page { min-width: 0; }
     .tool-section {
-      width: min(100%, 1180px);
+      width: min(100%, var(--layout-content-width));
       margin: 0 auto;
       padding: 20px clamp(18px, 4vw, 48px) 54px;
     }
@@ -105,9 +105,9 @@
     .page-title { margin: 0 0 22px; font-size: clamp(30px, 5vw, 42px); line-height: 1; letter-spacing: -.05em; }
     .control-panel, .preview-wrapper, .image-controls-section {
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: var(--radius-panel);
       background: var(--panel);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+      box-shadow: var(--shadow-panel);
     }
     .control-panel { padding: 22px; }
     #download-carousel-btn { margin-top: 18px; }
@@ -168,7 +168,7 @@
       margin: 0 auto;
       overflow: hidden;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: var(--radius-card);
       background: #151821;
     }
     .image-controls-section { margin: 18px auto 0; max-width: 360px; padding: 16px; }
@@ -179,7 +179,7 @@
     }
     @media (max-width: 700px) {
       .tool-app { display: block; }
-      .tool-nav { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 8px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+      .tool-nav { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 8px; padding: var(--space-nav-mobile-block) var(--space-4); border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
       .tool-nav-brand { flex: 0 0 auto; margin: 0 8px 0 0; }
       .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:var(--orange-soft); font-size:10px; font-weight:800; white-space:nowrap; }
       .tool-nav-label { display: none; }
@@ -196,7 +196,7 @@
     .preview-wrapper { position: relative; display: flex; min-height: 524px; flex-direction: column; gap: 18px; }
     .carousel-canvas { position: relative; }
     #carousel-canvas { position: absolute; left: -10000px; top: 22px; opacity: 0; pointer-events: none; }
-    #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: min(360px, calc(100% - 44px)); aspect-ratio: 3 / 4; height: auto; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 14px; background: #0f1117; }
+    #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: min(360px, calc(100% - 44px)); aspect-ratio: 3 / 4; height: auto; transform: translateX(-50%); border: 1px solid var(--line); border-radius: var(--radius-card); background: #0f1117; }
     .carousel-canvas.mode-hook { display: flex; align-items: center; justify-content: center; background: #080a0f; }
     .bg-img-container, .overlay { position: absolute; inset: 0; }
     .bg-img-container { overflow: hidden; z-index: 0; }
@@ -254,6 +254,7 @@
     .layout-2 .card-glass { margin-bottom: 4px; }
     @media (max-width: 480px) { #view-hook h1 { font-size: 2rem; } }
   </style>
+  <link rel="stylesheet" href="../assets/css/design-system.css" />
 </head>
 <body>
   <div class="tool-app">
