@@ -9,8 +9,9 @@
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,sans-serif; }
     .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .nav-scroll-hint { display:none; }
     .back,.tool-link { color:var(--ink); text-decoration:none; }
     .back { margin:0 8px 24px; color:var(--muted); font-weight:700; }
     .nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
@@ -40,13 +41,14 @@
     .transaction-card p { margin:0; }
     .transaction-card strong { color:var(--ink); }
     .empty { padding:26px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
-    @media (max-width:700px) { .app { display:block; } nav { position:static; height:auto; flex-direction:row; align-items:center; gap:8px; padding:14px 16px; overflow-x:auto; } .brand { flex:0 0 auto; margin:0 8px 0 0; } .back,.nav-label { display:none; } .tool-link { flex:0 0 auto; white-space:nowrap; } .saved-link { margin-top:0; padding-top:10px; border-top:0; } main { padding:34px 18px; } .admin-panel form { flex-wrap:wrap; } }
+    @media (max-width:700px) { .app { display:block; } nav { position:static; height:auto; flex-direction:row; align-items:center; gap:8px; padding:14px 16px; overflow-x:auto; } .brand { flex:0 0 auto; margin:0 8px 0 0; } .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:rgba(255,114,0,.12); font-size:10px; font-weight:800; white-space:nowrap; } .back,.nav-label { display:none; } .tool-link { flex:0 0 auto; white-space:nowrap; } .saved-link { margin-top:0; padding-top:10px; border-top:0; } main { padding:34px 18px; } .admin-panel form { flex-wrap:wrap; } }
   </style>
 </head>
 <body>
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <a class="back" href="../index.html">← Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>

@@ -30,7 +30,7 @@
       font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin: 0 8px 8px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .brand-subtitle { margin: 0 8px 30px; color: var(--muted); font-size: 12px; }
     .nav-label { margin: 18px 8px 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -41,6 +41,7 @@
     }
     .tool-link:hover, .tool-link:focus-visible { border-color: rgba(255, 114, 0, .45); background: var(--orange-soft); outline: none; transform: translateX(2px); }
     .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
+    .nav-scroll-hint { display:none; }
     main { width: min(100%, 1180px); margin:0 auto; padding:clamp(28px, 6vw, 78px) clamp(18px, 5vw, 64px); }
     .hero { max-width: 760px; }
     .eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
@@ -63,6 +64,7 @@
       .app { display: block; }
       nav { position:static; display: flex; height:auto; min-height:0; align-items: center; gap: 10px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
       .brand { flex: 0 0 auto; margin: 0 8px 0 0; }
+      .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:var(--orange-soft); font-size:10px; font-weight:800; white-space:nowrap; }
       .brand-subtitle, .nav-label { display: none; }
       .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
       .saved-link { margin-top:0; padding-top:10px; border-top:0; }
@@ -75,6 +77,7 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <p class="brand-subtitle">Production tools</p>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="tools/dashboard.html">Dashboard</a>
@@ -94,6 +97,22 @@
         <p>Fast, focused tools for turning your work into polished customer posts and clear quotations.</p>
       </section>
       <section class="tools-grid" aria-label="Available tools">
+        <a class="tool-card" href="tools/dashboard.html">
+          <div>
+            <div class="card-icon" aria-hidden="true">D</div>
+            <h2>Dashboard</h2>
+            <p>Review quotation totals, collected payments, balances, and recent business activity.</p>
+          </div>
+          <span class="card-link">Open dashboard →</span>
+        </a>
+        <a class="tool-card" href="tools/customer-tracker.html">
+          <div>
+            <div class="card-icon" aria-hidden="true">T</div>
+            <h2>Customer Tracker</h2>
+            <p>Follow customer projects from inquiry and quotation through production and delivery.</p>
+          </div>
+          <span class="card-link">Open customer tracker →</span>
+        </a>
         <a class="tool-card" href="tools/customer-feedback.html">
           <div>
             <div class="card-icon" aria-hidden="true">↗</div>
@@ -117,6 +136,30 @@
             <p>Prepare print settings and estimate material and production pricing with OrcaSlicer.</p>
           </div>
           <span class="card-link">Open price estimator →</span>
+        </a>
+        <a class="tool-card" href="tools/new-tool.html">
+          <div>
+            <div class="card-icon" aria-hidden="true">C</div>
+            <h2>Carousel and Layout Builder</h2>
+            <p>Build branded carousel slides and product highlight layouts from your photos.</p>
+          </div>
+          <span class="card-link">Open layout builder →</span>
+        </a>
+        <a class="tool-card" href="tools/quotation-records.html">
+          <div>
+            <div class="card-icon" aria-hidden="true">Q</div>
+            <h2>Saved Quotations</h2>
+            <p>Find saved quotations, review their details, and generate a PDF copy.</p>
+          </div>
+          <span class="card-link">View saved quotations →</span>
+        </a>
+        <a class="tool-card" href="tools/transaction-records.html">
+          <div>
+            <div class="card-icon" aria-hidden="true">✓</div>
+            <h2>Transactions Done</h2>
+            <p>Review completed customer orders and their linked quotations and payments.</p>
+          </div>
+          <span class="card-link">View completed transactions →</span>
         </a>
       </section>
     </main>

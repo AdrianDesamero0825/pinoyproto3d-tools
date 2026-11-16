@@ -12,8 +12,9 @@
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
     .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .nav-scroll-hint { display:none; }
     .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
     .back:hover,.back:focus-visible { color:var(--orange); outline:none; }
     .nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
@@ -40,6 +41,9 @@
     .status { min-height:22px; margin:0 0 12px; color:var(--muted); }
     .status.error { color:#ff9a9a; }
     .records { display:grid; gap:12px; }
+    .pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:16px; }
+    .pagination[hidden] { display:none; }
+    .pagination-label { color:var(--muted); font-size:12px; text-align:center; }
     .record { border:1px solid var(--line); border-radius:14px; background:rgba(21,29,39,.86); overflow:hidden; }
     .record summary { display:grid; grid-template-columns:1.1fr 1.6fr 1fr auto; gap:16px; align-items:center; padding:16px; cursor:pointer; list-style:none; }
     .record summary::-webkit-details-marker { display:none; }
@@ -75,6 +79,7 @@
       .app { display:block; }
       nav { position:static; display:flex; height:auto; min-height:0; align-items:center; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
       .brand { flex:0 0 auto; margin:0 8px 0 0; }
+      .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:rgba(255,114,0,.12); font-size:10px; font-weight:800; white-space:nowrap; }
       .back { flex:0 0 auto; margin:0 8px 0 0; white-space:nowrap; }
       .nav-label { display:none; }
       .tool-link { flex:0 0 auto; padding:10px 12px; white-space:nowrap; }
@@ -84,6 +89,7 @@
       .record-date,.record-total { text-align:left; }
       .record-body { grid-template-columns:1fr; }
       .edit-form { grid-template-columns:1fr; }
+      .pagination { flex-wrap:wrap; }
     }
   </style>
 </head>
@@ -91,6 +97,7 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <a class="back" href="../index.html">← Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
@@ -127,6 +134,11 @@
       </section>
       <p class="status" id="status" aria-live="polite">Loading saved quotations…</p>
       <section class="records" id="records" aria-label="Saved quotations"></section>
+      <div class="pagination" id="recordsPagination" aria-label="Quotation pages" hidden>
+        <button class="admin-button secondary" id="previousPageButton" type="button">Previous</button>
+        <span class="pagination-label" id="paginationLabel" aria-live="polite"></span>
+        <button class="admin-button secondary" id="nextPageButton" type="button">Next</button>
+      </div>
       </section>
       <section id="transactionsView" class="tab-panel" role="tabpanel" aria-labelledby="transactionsTab" hidden>
         <p class="status" id="transactionsStatus" aria-live="polite">Loading completed transactions…</p>
@@ -139,6 +151,10 @@
   <script>
     const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
     const recordsElement = document.getElementById("records");
+    const recordsPagination = document.getElementById("recordsPagination");
+    const paginationLabel = document.getElementById("paginationLabel");
+    const previousPageButton = document.getElementById("previousPageButton");
+    const nextPageButton = document.getElementById("nextPageButton");
     const statusElement = document.getElementById("status");
     const searchInput = document.getElementById("searchInput");
     const loginForm = document.getElementById("loginForm");
@@ -158,6 +174,13 @@
     let records = [];
     let completedTransactions = [];
     let session = null;
+    const RECORDS_PAGE_SIZE = 20;
+    let recordsPage = 1;
+    let hasNextPage = false;
+    let recordsRequestId = 0;
+    let searchTimer = null;
+    const RECORD_LIST_COLUMNS = "id,quotation_number,project_name,customer_name,quotation_date,contact,address,bill_to,ship_to,business_name,business_contact,business_email,items,tracker_id,updated_at";
+    const RECORD_PDF_COLUMNS = "id,quotation_number,quotation_date,customer_name,contact,address,project_name,bill_to,ship_to,business_name,business_contact,business_email,items,terms,images,payments";
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -171,6 +194,15 @@
       return (record.items || []).reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
     }
     const normalizeMatch = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+    function escapePostgrestValue(value) {
+      return `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+    }
+    function updatePagination() {
+      recordsPagination.hidden = recordsPage === 1 && !hasNextPage;
+      paginationLabel.textContent = `Page ${recordsPage}${hasNextPage ? " · More pages available" : ""}`;
+      previousPageButton.disabled = recordsPage <= 1;
+      nextPageButton.disabled = !hasNextPage;
+    }
     function setAdminState(nextSession) {
       session = nextSession;
       const loggedIn = Boolean(session);
@@ -304,12 +336,21 @@
         frame.remove();
       }
     }
+    async function loadQuotationForPdf(record) {
+      const { data, error } = await supabaseClient
+        .from("quotations")
+        .select(RECORD_PDF_COLUMNS)
+        .eq("id", record.id)
+        .single();
+      if (error) throw new Error(error.message);
+      return { ...record, ...data };
+    }
     function renderRecords() {
       const query = searchInput.value.trim().toLowerCase();
       const filtered = records.filter((record) => [record.quotation_number, record.project_name, record.customer_name]
         .some((value) => String(value || "").toLowerCase().includes(query)));
       if (!filtered.length) {
-        recordsElement.innerHTML = `<div class="empty">${records.length ? "No quotations match your search." : "No saved quotations yet."}</div>`;
+        recordsElement.innerHTML = `<div class="empty">${query ? "No quotations match your search." : "No saved quotations yet."}</div>`;
         return;
       }
       recordsElement.innerHTML = filtered.map((record) => {
@@ -400,18 +441,47 @@
       await loadRecords();
     }
     async function loadRecords() {
-      const response = await supabaseClient.from("quotations").select("*").order("created_at", { ascending:false });
+      const requestId = ++recordsRequestId;
+      statusElement.textContent = "Loading saved quotations…";
+      const firstRow = (recordsPage - 1) * RECORDS_PAGE_SIZE;
+      let query = supabaseClient.from("quotations")
+        .select(RECORD_LIST_COLUMNS)
+        .order("created_at", { ascending:false })
+        .order("id", { ascending:false })
+        .range(firstRow, firstRow + RECORDS_PAGE_SIZE);
+      const search = searchInput.value.trim();
+      if (search) {
+        const pattern = escapePostgrestValue(`%${search}%`);
+        query = query.or(`quotation_number.ilike.${pattern},project_name.ilike.${pattern},customer_name.ilike.${pattern}`);
+      }
+      const response = await query;
+      if (requestId !== recordsRequestId) return;
       if (response.error) {
         statusElement.textContent = `Could not load saved quotations: ${response.error.message}`;
         statusElement.className = "status error";
         return;
       }
-      records = response.data || [];
-      const { data: trackers, error: trackerError } = await supabaseClient.from("customer_trackers").select("id, customer_name, project_name, stage");
-      if (trackerError) {
-        statusElement.textContent = `Could not load tracker links: ${trackerError.message}`;
-        statusElement.className = "status error";
-        return;
+      const pageRows = response.data || [];
+      hasNextPage = pageRows.length > RECORDS_PAGE_SIZE;
+      records = pageRows.slice(0, RECORDS_PAGE_SIZE);
+      if (!records.length && recordsPage > 1) {
+        recordsPage -= 1;
+        return loadRecords();
+      }
+      updatePagination();
+      const trackerIds = [...new Set(records.map((record) => record.tracker_id).filter(Boolean))];
+      let trackers = [];
+      if (trackerIds.length) {
+        const { data, error } = await supabaseClient.from("customer_trackers")
+          .select("id, customer_name, project_name, stage")
+          .in("id", trackerIds);
+        if (requestId !== recordsRequestId) return;
+        if (error) {
+          statusElement.textContent = `Could not load tracker links: ${error.message}`;
+          statusElement.className = "status error";
+          return;
+        }
+        trackers = data || [];
       }
       records.forEach((record) => {
         record.tracker = (trackers || []).find((tracker) => tracker.id === record.tracker_id) || null;
@@ -425,13 +495,28 @@
               && normalizeMatch(record.project_name) === normalizeMatch(tracker.project_name))
             || null
         }));
-      statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"}`;
+      statusElement.textContent = `${records.length} saved quotation${records.length === 1 ? "" : "s"} on page ${recordsPage}${hasNextPage ? "; more available" : ""}.`;
+      statusElement.className = "status";
       renderRecords();
       renderTransactions();
     }
     searchInput.addEventListener("input", () => {
-      renderRecords();
-      renderTransactions();
+      recordsRequestId += 1;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        recordsPage = 1;
+        loadRecords();
+      }, 250);
+    });
+    previousPageButton.addEventListener("click", () => {
+      if (recordsPage <= 1) return;
+      recordsPage -= 1;
+      loadRecords();
+    });
+    nextPageButton.addEventListener("click", () => {
+      if (!hasNextPage) return;
+      recordsPage += 1;
+      loadRecords();
     });
     savedTab.addEventListener("click", () => setView("saved"));
     transactionsTab.addEventListener("click", () => setView("transactions"));
@@ -471,7 +556,7 @@
         if (!record) return;
         pdfButton.disabled = true;
         try {
-          await generateQuotationPdf(record);
+          await generateQuotationPdf(await loadQuotationForPdf(record));
           statusElement.textContent = `PDF generated for ${record.quotation_number}.`;
         } catch (error) {
           statusElement.textContent = `Could not generate PDF: ${error.message}`;
@@ -504,7 +589,7 @@
       if (!record) return;
       pdfButton.disabled = true;
       try {
-        await generateQuotationPdf(record);
+        await generateQuotationPdf(await loadQuotationForPdf(record));
         transactionsStatus.textContent = `PDF generated for ${record.quotation_number}.`;
       } catch (error) {
         transactionsStatus.textContent = `Could not generate PDF: ${error.message}`;

@@ -6,7 +6,7 @@
   <title>PinoyProto 3D - Carousel and Layout Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Montserrat:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     :root {
       --ink: #edf2f7;
@@ -29,22 +29,25 @@
       background:
         radial-gradient(circle at 85% 4%, rgba(255, 114, 0, .13), transparent 28rem),
         #0d141c;
-      font: 15px/1.5 Montserrat, ui-sans-serif, system-ui, sans-serif;
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
 
-    .tool-app { display: grid; grid-template-columns: minmax(220px, 240px) minmax(0, 1fr); min-height: 100vh; }
+    .tool-app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
     .tool-nav {
       position: sticky;
       top: 0;
       display: flex;
       height: 100vh;
-      min-height: 100vh;
+      height: 100dvh;
+      min-height: 0;
       flex-direction: column;
+      overflow-y: auto;
+      overscroll-behavior: contain;
       padding: 28px 16px;
       border-right: 1px solid var(--line);
       background: rgba(17, 26, 36, .86);
     }
-    .tool-nav-brand, .brand {
+    .tool-nav-brand {
       margin: 0 8px 28px;
       color: var(--orange);
       font-size: 13px;
@@ -52,6 +55,7 @@
       letter-spacing: .08em;
       text-transform: uppercase;
     }
+    .nav-scroll-hint { display: none; }
     .tool-back {
       display: inline-block;
       margin: 0 8px 24px;
@@ -60,6 +64,7 @@
       font-weight: 700;
       text-decoration: none;
     }
+    .tool-back:hover, .tool-back:focus-visible { color: var(--orange); outline: none; }
     .tool-nav-label {
       margin: 18px 8px 7px;
       color: var(--muted);
@@ -82,15 +87,10 @@
       border-color: rgba(255, 114, 0, .45);
       background: var(--orange-soft);
       outline: none;
+      transform: translateX(2px);
     }
     .saved-link { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
     .tool-page { min-width: 0; }
-    .workspace-header {
-      width: min(100%, 1180px);
-      margin: 0 auto;
-      padding: 28px clamp(18px, 4vw, 48px) 0;
-    }
-    .workspace-header .brand { margin: 0; }
     .tool-section {
       width: min(100%, 1180px);
       margin: 0 auto;
@@ -98,10 +98,11 @@
     }
     .app-container {
       display: grid;
-      grid-template-columns: minmax(280px, 360px) minmax(360px, 1fr);
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
       gap: 24px;
       align-items: start;
     }
+    .page-title { margin: 0 0 22px; font-size: clamp(30px, 5vw, 42px); line-height: 1; letter-spacing: -.05em; }
     .control-panel, .preview-wrapper, .image-controls-section {
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -111,7 +112,7 @@
     .control-panel { padding: 22px; }
     #download-carousel-btn { margin-top: 18px; }
     h2 { margin: 0 0 18px; font-size: clamp(24px, 3vw, 34px); line-height: 1.05; letter-spacing: -.04em; }
-    label, .section-title {
+    label, .field-label, .section-title {
       display: block;
       margin: 14px 0 6px;
       color: var(--muted);
@@ -130,6 +131,23 @@
       font: inherit;
     }
     input[type="file"] { padding: 8px; color: var(--muted); }
+    .image-dropzone { position: relative; display: grid; place-items: center; min-height: 112px; padding: 14px; border: 1px dashed #516276; border-radius: 13px; background: #111a24; text-align: center; transition: border-color .2s, background .2s; }
+    .image-dropzone:hover, .image-dropzone.dragging, .image-dropzone:focus-within { border-color: var(--orange); background: #1a232e; }
+    .image-dropzone input[type="file"] { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+    .image-drop-content { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; pointer-events: none; }
+    .image-drop-content strong { color: var(--ink); font-size: 13px; }
+    .image-drop-thumb { display: none; width: 72px; height: 54px; border-radius: 7px; object-fit: cover; }
+    .image-dropzone.has-image .image-drop-thumb { display: block; }
+    .image-dropzone.has-image .image-drop-content strong { color: #ffb37a; }
+    .image-file-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .paste-target-control { margin: 0 0 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15, 20, 28, .72); }
+    .paste-target-control label { display: block; margin: 0 0 7px; color: var(--ink); font-size: 12px; font-weight: 800; }
+    .paste-target-control select { width: 100%; }
+    .paste-target-control p { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+    .image-dropzone.paste-target-selected { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(255, 114, 0, .18); }
+    .image-step { display: flex; align-items: center; gap: 11px; margin: 14px 0 8px; color: var(--ink); font-size: 13px; font-weight: 800; }
+    .image-step-button { display: grid; flex: 0 0 28px; width: 28px; height: 28px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #141a21; background: var(--orange); font: inherit; font-weight: 900; cursor: pointer; }
+    .image-step-button:hover, .image-step-button:focus-visible, .image-step-button[aria-pressed="true"] { background: #ff9b4a; outline: 2px solid #ffb37a; outline-offset: 2px; }
     input[type="color"] { min-height: 42px; padding: 4px; }
     textarea { min-height: 74px; resize: vertical; }
     button { cursor: pointer; font-weight: 800; }
@@ -143,9 +161,10 @@
     .scrollable-controls { max-height: 560px; overflow: auto; }
     .preview-wrapper { padding: 22px; }
     .carousel-canvas {
-      width: 360px;
+      width: min(360px, 100%);
       max-width: 100%;
-      height: 480px;
+      aspect-ratio: 3 / 4;
+      height: auto;
       margin: 0 auto;
       overflow: hidden;
       border: 1px solid var(--line);
@@ -155,10 +174,19 @@
     .image-controls-section { margin: 18px auto 0; max-width: 360px; padding: 16px; }
     .slider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     input[type="range"] { padding: 0; accent-color: var(--orange); }
-    @media (max-width: 820px) {
-      .tool-app { display: block; }
-      .tool-nav { position: static; height: auto; min-height: 0; }
+    @media (max-width: 1000px) {
       .app-container { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .tool-app { display: block; }
+      .tool-nav { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 8px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+      .tool-nav-brand { flex: 0 0 auto; margin: 0 8px 0 0; }
+      .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:var(--orange-soft); font-size:10px; font-weight:800; white-space:nowrap; }
+      .tool-nav-label { display: none; }
+      .tool-back { flex: 0 0 auto; margin: 0 8px 0 0; white-space: nowrap; }
+      .tool-link { flex: 0 0 auto; padding: 10px 12px; white-space: nowrap; }
+      .saved-link { margin-top: 0; padding-top: 10px; border-top: 0; }
+      .tool-section { padding: 34px 18px 40px; }
       .carousel-canvas { margin: 0 auto; }
     }
     .layout-grid, .input-section, .upload-group { display: flex; flex-direction: column; gap: 10px; }
@@ -168,7 +196,7 @@
     .preview-wrapper { position: relative; display: flex; min-height: 524px; flex-direction: column; gap: 18px; }
     .carousel-canvas { position: relative; }
     #carousel-canvas { position: absolute; left: -10000px; top: 22px; opacity: 0; pointer-events: none; }
-    #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: 360px; height: 480px; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 14px; background: #0f1117; }
+    #live-preview-canvas { position: absolute; top: 22px; left: 50%; z-index: 10; width: min(360px, calc(100% - 44px)); aspect-ratio: 3 / 4; height: auto; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 14px; background: #0f1117; }
     .carousel-canvas.mode-hook { display: flex; align-items: center; justify-content: center; background: #080a0f; }
     .bg-img-container, .overlay { position: absolute; inset: 0; }
     .bg-img-container { overflow: hidden; z-index: 0; }
@@ -224,13 +252,14 @@
     .layout-2 .inset-stack-right .photo-box { flex: 1; border: 2px solid #fff; border-radius: 8px; background: #1b1e29; }
     .layout-2 .inset-stack-right .img-wrapper { background: transparent; }
     .layout-2 .card-glass { margin-bottom: 4px; }
-    @media (max-width: 480px) { .carousel-canvas { height: min(480px, 125vw); } #view-hook h1 { font-size: 2rem; } }
+    @media (max-width: 480px) { #view-hook h1 { font-size: 2rem; } }
   </style>
 </head>
 <body>
   <div class="tool-app">
     <nav class="tool-nav" aria-label="Tool navigation">
       <p class="tool-nav-brand">PinoyProto 3D</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <a class="tool-back" href="../index.html">← Return to home</a>
       <p class="tool-nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
@@ -244,45 +273,58 @@
       <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <div class="tool-page">
-      <header class="workspace-header">
-        <div class="brand">PINOYPROTO 3D <span>STUDIO</span></div>
-      </header>
-
   <main class="tool-section">
+    <h1 class="page-title">Carousel and Layout Builder</h1>
     <div class="app-container">
       
       <!-- CONTROL PANEL -->
       <div class="control-panel">
-        <h2>Carousel & Layout Builder (3:4)</h2>
+        <h2>Edit carousel content</h2>
+        <div class="paste-target-control">
+          <label for="image-paste-target">Paste image into</label>
+          <select id="image-paste-target" aria-describedby="image-paste-status">
+            <option value="">Choose an image slot first</option>
+            <option value="input-hook-bg">Hook background</option>
+            <option value="img-input-1">Photo 1 — Top Left</option>
+            <option value="img-input-2">Photo 2 — Top Right</option>
+            <option value="img-input-3">Photo 3 — Main Showcase</option>
+            <option value="img-input-4">Photo 4 — Inset Top</option>
+            <option value="img-input-5">Photo 5 — Inset Bottom</option>
+          </select>
+          <p id="image-paste-status" aria-live="polite">Select a slot before pasting an image.</p>
+        </div>
         
         <!-- Slide Switch Tabs -->
-        <div class="tab-group">
-          <button id="tab-hook" class="tab-btn active" type="button" role="tab" aria-selected="true">Slide 1 (Hook)</button>
-          <button id="tab-product" class="tab-btn" type="button" role="tab" aria-selected="false">Product Slide</button>
+        <div class="tab-group" role="tablist" aria-label="Carousel slides" aria-orientation="horizontal">
+          <button id="tab-hook" class="tab-btn active" type="button" role="tab" aria-controls="section-hook" aria-selected="true" tabindex="0">Slide 1 (Hook)</button>
+          <button id="tab-product" class="tab-btn" type="button" role="tab" aria-controls="section-product" aria-selected="false" tabindex="-1">Product Slide</button>
         </div>
 
         <div class="scrollable-controls">
           <!-- SLIDE 1 (HOOK) INPUTS -->
-          <div id="section-hook" class="input-section">
-            <label>Main Question / Hook</label>
+          <div id="section-hook" class="input-section" role="tabpanel" aria-labelledby="tab-hook" tabindex="0">
+            <label for="input-hook-title">Main Question / Hook</label>
             <textarea id="input-hook-title" rows="2">NEED A 3D DESIGN FOR YOUR PROJECT?</textarea>
 
-            <label>Subtext / Lead-in</label>
+            <label for="input-hook-sub">Subtext / Lead-in</label>
             <input type="text" id="input-hook-sub" value="Swipe to see our recent 3D prints & custom models ➡️" />
 
-            <label>Background Image</label>
-            <input type="file" id="input-hook-bg" accept="image/*" />
+            <div class="image-step"><button class="image-step-button" type="button" data-paste-target="input-hook-bg" aria-label="Select hook background as paste destination" aria-pressed="false">1</button><span>Choose the hook background image</span></div>
+            <div class="image-dropzone" data-image-upload data-paste-target="input-hook-bg">
+              <input type="file" id="input-hook-bg" accept="image/*" aria-label="Background image" />
+              <div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop background image here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div>
+            </div>
           </div>
 
           <!-- PRODUCT SLIDE INPUTS -->
-          <div id="section-product" class="input-section hidden">
-            <label>Product / Project Name</label>
+          <div id="section-product" class="input-section hidden" role="tabpanel" aria-labelledby="tab-product" tabindex="0">
+            <label for="input-prod-title">Product / Project Name</label>
             <input type="text" id="input-prod-title" value="CUSTOM MECHANICAL BRACKET" />
 
-            <label>Description / Specs</label>
+            <label for="input-prod-desc">Description / Specs</label>
             <textarea id="input-prod-desc" rows="2">PETG Material | High Stress Resistance | 0.2mm Layer Height</textarea>
 
-            <label>Call to Action / Badge</label>
+            <label for="input-prod-cta">Call to Action / Badge</label>
             <input type="text" id="input-prod-cta" value="AVAILABLE AT PINOYPROTO 3D" />
 
             <!-- INTEGRATED IMAGE DESIGNER CONTROLS -->
@@ -290,8 +332,8 @@
               <div class="section-title">Design Highlight Layouts</div>
 
               <!-- LAYOUT TEMPLATES -->
-              <label>Highlight Layout Templates</label>
-              <div class="layout-grid">
+              <div class="field-label" id="layout-templates-label">Highlight Layout Templates</div>
+              <div class="layout-grid" role="group" aria-labelledby="layout-templates-label">
                 <button class="preset-btn active" data-layout="layout-1-vertical">Layout 1A: Before & After Split (Vertical)</button>
                 <button class="preset-btn" data-layout="layout-1-horizontal">Layout 1B: Before & After Stack (Horizontal)</button>
                 <button class="preset-btn" data-layout="layout-2">Layout 2: Reference Multi-Panel Showcase</button>
@@ -300,40 +342,40 @@
 
               <!-- PHOTO UPLOADS & BADGES -->
               <div class="upload-group">
-                <label>Photo 1 (Top Left)</label>
-                <input type="file" id="img-input-1" accept="image/*" />
-                <select id="label-select-1" class="label-dropdown">
+                <div class="image-step" data-paste-target="img-input-1"><button class="image-step-button" type="button" data-paste-target="img-input-1" aria-label="Select Photo 1 as paste destination" aria-pressed="false">1</button><span>Add Photo 1 (Top Left)</span></div>
+                <div class="image-dropzone" data-image-upload data-paste-target="img-input-1"><input type="file" id="img-input-1" accept="image/*" aria-label="Photo 1 (Top Left)" /><div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop photo here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div></div>
+                <select id="label-select-1" class="label-dropdown" aria-label="Badge for Photo 1">
                   <option value="BEFORE: CLIENT SKETCH">Badge: BEFORE: CLIENT SKETCH</option>
                   <option value="REFERENCE">Badge: REFERENCE</option>
                   <option value="SKETCH">Badge: SKETCH</option>
                   <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
                 </select>
 
-                <label>Photo 2 (Top Right)</label>
-                <input type="file" id="img-input-2" accept="image/*" />
-                <select id="label-select-2" class="label-dropdown">
+                <div class="image-step" data-paste-target="img-input-2"><button class="image-step-button" type="button" data-paste-target="img-input-2" aria-label="Select Photo 2 as paste destination" aria-pressed="false">2</button><span>Add Photo 2 (Top Right)</span></div>
+                <div class="image-dropzone" data-image-upload data-paste-target="img-input-2"><input type="file" id="img-input-2" accept="image/*" aria-label="Photo 2 (Top Right)" /><div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop photo here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div></div>
+                <select id="label-select-2" class="label-dropdown" aria-label="Badge for Photo 2">
                   <option value="AFTER: 3D MODEL">Badge: AFTER: 3D MODEL</option>
                   <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
                   <option value="EXPLODED CAD VIEW">Badge: EXPLODED CAD VIEW</option>
                   <option value="FINAL 3D PRINT">Badge: FINAL 3D PRINT</option>
                 </select>
 
-                <label>Photo 3 (Bottom Main Showcase)</label>
-                <input type="file" id="img-input-3" accept="image/*" />
-                <select id="label-select-3" class="label-dropdown">
+                <div class="image-step" data-paste-target="img-input-3"><button class="image-step-button" type="button" data-paste-target="img-input-3" aria-label="Select Photo 3 as paste destination" aria-pressed="false">3</button><span>Add Photo 3 (Main Showcase)</span></div>
+                <div class="image-dropzone" data-image-upload data-paste-target="img-input-3"><input type="file" id="img-input-3" accept="image/*" aria-label="Photo 3 (Bottom Main Showcase)" /><div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop photo here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div></div>
+                <select id="label-select-3" class="label-dropdown" aria-label="Badge for Photo 3">
                   <option value="AFTER: OUR 3D PRINTS">Badge: AFTER: OUR 3D PRINTS</option>
                   <option value="FINAL 3D PRINT">Badge: FINAL 3D PRINT</option>
                   <option value="OUR 3D MODEL">Badge: OUR 3D MODEL</option>
                 </select>
 
-                <label>Photo 4 (Bottom Right - Inset Top)</label>
-                <input type="file" id="img-input-4" accept="image/*" />
+                <div class="image-step" data-paste-target="img-input-4"><button class="image-step-button" type="button" data-paste-target="img-input-4" aria-label="Select Photo 4 as paste destination" aria-pressed="false">4</button><span>Add Photo 4 (Inset Top)</span></div>
+                <div class="image-dropzone" data-image-upload data-paste-target="img-input-4"><input type="file" id="img-input-4" accept="image/*" aria-label="Photo 4 (Bottom Right - Inset Top)" /><div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop photo here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div></div>
 
-                <label>Photo 5 (Bottom Right - Inset Bottom)</label>
-                <input type="file" id="img-input-5" accept="image/*" />
+                <div class="image-step" data-paste-target="img-input-5"><button class="image-step-button" type="button" data-paste-target="img-input-5" aria-label="Select Photo 5 as paste destination" aria-pressed="false">5</button><span>Add Photo 5 (Inset Bottom)</span></div>
+                <div class="image-dropzone" data-image-upload data-paste-target="img-input-5"><input type="file" id="img-input-5" accept="image/*" aria-label="Photo 5 (Bottom Right - Inset Bottom)" /><div class="image-drop-content"><img class="image-drop-thumb" alt=""><strong>Drop photo here</strong><span>or click to browse, or paste an image</span><span class="image-file-name">No image selected</span></div></div>
               </div>
 
-              <label>Background Pattern</label>
+              <label for="bg-style-select">Background Pattern</label>
               <select id="bg-style-select">
                 <option value="bg-dark-clean">Minimal Dark Studio</option>
                 <option value="bg-cad-grid">CAD Blueprint Grid</option>
@@ -342,7 +384,7 @@
               </select>
 
               <div class="control-row">
-                <label>Accent Line / Border Color</label>
+                <label for="accent-color">Accent Line / Border Color</label>
                 <input type="color" id="accent-color" value="#ff5500" />
               </div>
             </div>
@@ -751,6 +793,8 @@
         productTab.classList.toggle('active', product);
         hookTab.setAttribute('aria-selected', String(!product));
         productTab.setAttribute('aria-selected', String(product));
+        hookTab.tabIndex = product ? -1 : 0;
+        productTab.tabIndex = product ? 0 : -1;
         hookSection.classList.toggle('hidden', product);
         productSection.classList.toggle('hidden', !product);
         hookView.classList.toggle('hidden', product);
@@ -790,30 +834,97 @@
 
       hookTab.addEventListener('click', () => setSlide('hook'));
       productTab.addEventListener('click', () => setSlide('product'));
+      [hookTab, productTab].forEach((tab) => tab.addEventListener('keydown', (event) => {
+        const tabs = [hookTab, productTab];
+        const currentIndex = tabs.indexOf(event.currentTarget);
+        let nextIndex = currentIndex;
+        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        tabs[nextIndex].focus();
+        setSlide(nextIndex === 0 ? 'hook' : 'product');
+      }));
       bindText('#input-hook-title', '#preview-hook-title');
       bindText('#input-hook-sub', '#preview-hook-sub');
       bindText('#input-prod-title', '#preview-prod-title');
       bindText('#input-prod-desc', '#preview-prod-desc');
       bindText('#input-prod-cta', '#preview-prod-cta');
-      $('#input-hook-bg').addEventListener('change', (event) => {
-        const file = event.target.files[0];
+      const imageUploadUrls = new WeakMap();
+      function loadUploadedImage(input, file) {
         if (!file) return;
+        const zone = input.closest('[data-image-upload]');
+        const thumb = zone.querySelector('.image-drop-thumb');
+        const fileName = zone.querySelector('.image-file-name');
+        if (file.type && !file.type.startsWith('image/')) {
+          fileName.textContent = 'Choose an image file';
+          return;
+        }
+        const previousUrl = imageUploadUrls.get(input);
+        if (previousUrl) URL.revokeObjectURL(previousUrl);
         const url = URL.createObjectURL(file);
-        $('#preview-bg').src = url;
-        $('#preview-bg').classList.remove('hidden');
-        $('#preview-bg').addEventListener('load', drawCurrentPreview, { once: true });
-      });
-      for (let id = 1; id <= 5; id += 1) {
-        $(`#img-input-${id}`).addEventListener('change', (event) => {
-          const file = event.target.files[0];
-          if (!file) return;
-          const url = URL.createObjectURL(file);
-          $(`#prev-img-${id}`).src = url;
-          $(`#bg-blur-${id}`).src = url;
-          $(`#prev-img-${id}`).addEventListener('load', drawCurrentPreview, { once: true });
-          $(`#bg-blur-${id}`).addEventListener('load', drawCurrentPreview, { once: true });
-        });
+        imageUploadUrls.set(input, url);
+        zone.classList.add('has-image');
+        fileName.textContent = file.name || 'Image selected';
+        thumb.src = url;
+        if (input.id === 'input-hook-bg') {
+          const background = $('#preview-bg');
+          background.src = url;
+          background.classList.remove('hidden');
+          background.addEventListener('load', drawCurrentPreview, { once: true });
+          return;
+        }
+        const id = input.id.slice(-1);
+        const image = $(`#prev-img-${id}`);
+        const backdrop = $(`#bg-blur-${id}`);
+        image.src = backdrop.src = url;
+        image.addEventListener('load', drawCurrentPreview, { once: true });
+        backdrop.addEventListener('load', drawCurrentPreview, { once: true });
       }
+      all('[data-image-upload]').forEach((zone) => {
+        const input = zone.querySelector('input[type="file"]');
+        input.addEventListener('change', () => {
+          loadUploadedImage(input, input.files[0]);
+        });
+        ['dragenter', 'dragover'].forEach((type) => zone.addEventListener(type, (event) => {
+          event.preventDefault();
+          zone.classList.add('dragging');
+        }));
+        ['dragleave', 'drop'].forEach((type) => zone.addEventListener(type, (event) => {
+          event.preventDefault();
+          zone.classList.remove('dragging');
+        }));
+        zone.addEventListener('drop', (event) => loadUploadedImage(input, event.dataTransfer.files[0]));
+      });
+      const pasteTargetSelect = $('#image-paste-target');
+      const pasteTargetStatus = $('#image-paste-status');
+      function updatePasteTarget() {
+        all('.image-dropzone').forEach((zone) => zone.classList.toggle('paste-target-selected', zone.querySelector('input').id === pasteTargetSelect.value && Boolean(pasteTargetSelect.value)));
+        all('.image-step-button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.pasteTarget === pasteTargetSelect.value && Boolean(pasteTargetSelect.value))));
+        const selectedOption = pasteTargetSelect.selectedOptions[0];
+        pasteTargetStatus.textContent = pasteTargetSelect.value
+          ? `Pasted images will go to ${selectedOption.textContent}.`
+          : 'Select a slot before pasting an image.';
+      }
+      all('[data-paste-target]').forEach((target) => target.addEventListener('click', () => {
+        pasteTargetSelect.value = target.dataset.pasteTarget;
+        updatePasteTarget();
+      }));
+      pasteTargetSelect.addEventListener('change', updatePasteTarget);
+      document.addEventListener('paste', (event) => {
+        const item = [...(event.clipboardData?.items || [])].find((entry) => entry.type.startsWith('image/'));
+        if (!item) return;
+        event.preventDefault();
+        const file = item.getAsFile();
+        const targetId = pasteTargetSelect.value;
+        if (!targetId) {
+          pasteTargetStatus.textContent = 'Choose a slot in “Paste image into” before pressing Ctrl+V or Cmd+V.';
+          return;
+        }
+        if (file) loadUploadedImage(document.getElementById(targetId), file);
+      });
       all('#label-select-1, #label-select-2, #label-select-3').forEach((select) => {
         select.addEventListener('change', (event) => {
           $(`#badge-tag-${select.id.slice(-1)}`).textContent = event.target.value;

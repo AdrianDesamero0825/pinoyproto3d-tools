@@ -1,0 +1,12 @@
+---
+description: Keep image paste actions explicit and scoped to a selected upload slot
+globs: tools/*.html
+alwaysApply: false
+---
+
+# Image paste targeting
+
+- Image paste handlers must write only to an explicitly selected image upload slot. A dedicated numbered step or paste-target selector may set the destination.
+- Do not infer the paste destination from a text field's focus, and do not choose a default destination.
+- Show the active destination in the interface and provide clear feedback when an image is pasted without a selected destination.
+- Keep ordinary text pastes in text fields unaffected.

@@ -4,31 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PinoyProto 3D - Price Estimator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet" />
   <style>
     :root { --ink:#edf2f7; --muted:#9eacbd; --panel:rgba(21,29,39,.86); --panel-2:#1b2633; --line:#2b3a4b; --orange:#ff7200; --orange-soft:rgba(255,114,0,.12); }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; overflow-x:hidden; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:15px/1.5 Montserrat, sans-serif; }
-    .tool-app { display:grid; grid-template-columns:minmax(220px,240px) minmax(0,1fr); min-height:100vh; }
-    .tool-nav { position:sticky; top:0; display:flex; height:100vh; min-height:100vh; flex-direction:column; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
+    body { margin:0; min-height:100vh; overflow-x:hidden; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),#0d141c; font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .tool-app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+    .tool-nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:28px 16px; border-right:1px solid var(--line); background:rgba(17,26,36,.86); }
     .tool-nav-brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .nav-scroll-hint { display:none; }
     .tool-back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .tool-back:hover,.tool-back:focus-visible { color:var(--orange); outline:none; }
     .tool-nav-label { margin:18px 8px 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
     .tool-link { display:block; margin:0 2px; padding:11px 12px; border:1px solid transparent; border-radius:10px; color:var(--ink); text-decoration:none; line-height:1.35; }
-    .tool-link:hover,.tool-link.active { border-color:rgba(255,114,0,.45); background:var(--orange-soft); outline:none; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link.active { border-color:rgba(255,114,0,.45); background:var(--orange-soft); outline:none; transform:translateX(2px); }
     .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
     .tool-page { min-width:0; }
-    .workspace-header { width:min(100%,1180px); margin:0 auto; padding:28px clamp(18px,4vw,48px) 0; }
-    .workspace-header .brand { margin:0; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
-    .workspace-header .brand span { color:var(--muted); }
     .tool-section { width:min(100%,1180px); margin:0 auto; padding:20px clamp(18px,4vw,48px) 54px; }
     .app-container { display:grid; grid-template-columns:minmax(280px,1fr) minmax(320px,.8fr); gap:24px; align-items:start; }
     .control-panel,.preview-wrapper { border:1px solid var(--line); border-radius:18px; background:var(--panel); box-shadow:0 24px 70px rgba(0,0,0,.28); }
     .control-panel { padding:22px; }
     .preview-wrapper { padding:22px; }
-    h1 { margin:0 0 10px; font:clamp(30px,4vw,48px)/1 "Bebas Neue",sans-serif; letter-spacing:.02em; }
+    h1 { margin:0 0 10px; font-size:clamp(30px,5vw,46px); line-height:1; letter-spacing:-.05em; }
     h2 { margin:0 0 18px; font-size:clamp(24px,3vw,34px); line-height:1.05; letter-spacing:-.04em; }
     .intro { max-width:650px; margin:0 0 24px; color:var(--muted); font-weight:300; }
     .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
@@ -75,7 +71,18 @@
     .action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
     .action-row button { padding:9px; color:var(--ink); background:var(--panel-2); border:1px solid var(--line); border-radius:9px; cursor:pointer; font:inherit; font-size:12px; font-weight:700; }
     .action-row button:hover { border-color:var(--orange); }
-    @media (max-width:820px) { .tool-app{display:block}.tool-nav{position:static;height:auto;min-height:0}.tool-nav-brand,.tool-back,.tool-nav-label{display:none}.tool-nav{flex-direction:row;gap:8px;overflow:auto;padding:14px}.tool-link{flex:0 0 auto;white-space:nowrap}.app-container{grid-template-columns:1fr}.viewer{height:420px} }
+    @media (max-width:1000px) { .app-container{grid-template-columns:1fr}.viewer{height:420px} }
+    @media (max-width:700px) {
+      .tool-app{display:block}
+      .tool-nav{position:static;display:flex;height:auto;min-height:0;flex-direction:row;align-items:center;gap:8px;padding:14px 16px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto}
+      .tool-nav-brand{flex:0 0 auto;margin:0 8px 0 0}
+      .nav-scroll-hint{display:inline-flex;flex:0 0 auto;align-items:center;padding:5px 8px;border:1px solid rgba(255,114,0,.4);border-radius:99px;color:#ffb37a;background:var(--orange-soft);font-size:10px;font-weight:800;white-space:nowrap}
+      .tool-nav-label{display:none}
+      .tool-back{flex:0 0 auto;margin:0 8px 0 0;white-space:nowrap}
+      .tool-link{flex:0 0 auto;padding:10px 12px;white-space:nowrap}
+      .saved-link{margin-top:0;padding-top:10px;border-top:0}
+      .tool-section{padding:34px 18px 40px}
+    }
     @media (max-width:560px) { .field-grid{grid-template-columns:1fr}.tool-section{padding:20px 18px 40px}.viewer{height:320px} }
   </style>
 </head>
@@ -83,6 +90,7 @@
   <div class="tool-app">
     <nav class="tool-nav" aria-label="Tool navigation">
       <p class="tool-nav-brand">PinoyProto 3D</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <a class="tool-back" href="../index.html">← Return to home</a>
       <p class="tool-nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
@@ -90,15 +98,12 @@
       <p class="tool-nav-label">Tools</p>
       <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link active" href="price-estimator.html">Price Estimator</a>
+      <a class="tool-link active" href="price-estimator.html" aria-current="page">Price Estimator</a>
       <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
     <div class="tool-page">
-      <header class="workspace-header">
-        <div class="brand">PINOYPROTO 3D <span>STUDIO</span></div>
-      </header>
       <main class="tool-section">
         <h1>Price Estimator</h1>
         <p class="intro">Inspect your model, preview layers, and prepare a lightweight 3D-print price estimate using the settings that matter most for your quotation.</p>
