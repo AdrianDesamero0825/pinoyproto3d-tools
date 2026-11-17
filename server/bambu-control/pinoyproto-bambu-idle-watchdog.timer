@@ -1,0 +1,11 @@
+[Unit]
+Description=Check whether the Bambu Studio desktop is still connected
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=pinoyproto-bambu-idle-watchdog.service
+
+[Install]
+WantedBy=timers.target

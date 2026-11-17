@@ -320,6 +320,8 @@
     const supabaseClient = window.createAdminSupabaseClient();
     window.installAdminSessionTimeout(supabaseClient);
     let trackerSuggestions = [];
+    let fullModelChecked = false;
+    let fullModelAvailable = false;
     const customerNameSuggestions = document.getElementById("customerNameSuggestions");
     const projectNameSuggestions = document.getElementById("projectNameSuggestions");
     let activeCustomerSuggestion = -1;
@@ -327,6 +329,52 @@
     function setExportStatus(message, type = "") {
       exportStatus.textContent = message;
       exportStatus.className = `export-status ${type}`.trim();
+    }
+
+    async function detectFullModel() {
+      const { error } = await supabaseClient.from("projects").select("id").limit(1);
+      fullModelAvailable = !error;
+      fullModelChecked = true;
+    }
+
+    async function syncFullModel(quotationId, trackerId, customerName, projectName, quotedAmount, supersedesId) {
+      if (!fullModelAvailable) return null;
+      const { data: project, error: projectError } = await supabaseClient
+        .from("projects")
+        .upsert({ customer_name:customerName, project_name:projectName }, { onConflict:"customer_key,project_key" })
+        .select("id")
+        .single();
+      if (projectError) throw new Error(`Could not save project identity: ${projectError.message}`);
+
+      const { error: trackerError } = await supabaseClient
+        .from("customer_trackers")
+        .update({ project_id:project.id })
+        .eq("id", trackerId);
+      if (trackerError) throw new Error(`Could not link project to customer tracker: ${trackerError.message}`);
+
+      const { data: previousRevision, error: revisionError } = await supabaseClient
+        .from("quotations")
+        .select("id, revision_number")
+        .eq("project_id", project.id)
+        .neq("id", quotationId)
+        .order("revision_number", { ascending:false })
+        .limit(1)
+        .maybeSingle();
+      if (revisionError) throw new Error(`Could not read quotation revisions: ${revisionError.message}`);
+
+      const quotationUpdate = {
+        project_id: project.id,
+        revision_number: previousRevision ? Number(previousRevision.revision_number || 0) + 1 : 1,
+        total_amount: quotedAmount,
+        status: "saved",
+        ...(supersedesId ? { supersedes_id:supersedesId } : {})
+      };
+      const { error: quotationError } = await supabaseClient
+        .from("quotations")
+        .update(quotationUpdate)
+        .eq("id", quotationId);
+      if (quotationError) throw new Error(`Could not save quotation revision: ${quotationError.message}`);
+      return { ...project, revisionNumber: quotationUpdate.revision_number };
     }
 
     function getLocalDate() {
@@ -434,7 +482,7 @@
       updateProjectSuggestions();
     }
 
-    async function linkQuotationToTracker(quotationId, customerName, projectName) {
+    async function linkQuotationToTracker(quotationId, customerName, projectName, quotedAmount) {
       const { data: trackers, error: trackerError } = await supabaseClient
         .from("customer_trackers")
         .select("id, customer_name, project_name, stage")
@@ -442,24 +490,40 @@
       if (trackerError) throw new Error(`Could not find a matching customer tracker: ${trackerError.message}`);
       const customerKey = normalizeMatch(customerName);
       const projectKey = normalizeMatch(projectName);
+      if (!customerKey || !projectKey) throw new Error("Customer name and project name are required to link the quotation.");
       const tracker = (trackers || []).find((item) =>
         normalizeMatch(item.customer_name) === customerKey &&
         normalizeMatch(item.project_name) === projectKey
       );
+      let linkedTracker = tracker;
+      if (!linkedTracker) {
+        const { data: createdTracker, error: createTrackerError } = await supabaseClient
+          .from("customer_trackers")
+          .insert({
+            customer_name: customerName,
+            project_name: projectName,
+            stage: "Quotation Sent",
+            quoted_amount: quotedAmount,
+            paid_amount: 0,
+            updated_at: new Date().toISOString()
+          })
+          .select("id, customer_name, project_name, stage")
+          .single();
+        if (createTrackerError) throw new Error(`Could not create customer tracker: ${createTrackerError.message}`);
+        linkedTracker = createdTracker;
+      } else if (["Inquiry", "Quotation Sent"].includes(linkedTracker.stage)) {
+        const { error: amountError } = await supabaseClient
+          .from("customer_trackers")
+          .update({ quoted_amount: quotedAmount, stage:"Quotation Sent", updated_at:new Date().toISOString() })
+          .eq("id", linkedTracker.id);
+        if (amountError) throw new Error(`Could not update customer tracker: ${amountError.message}`);
+      }
       const { error: quotationLinkError } = await supabaseClient
         .from("quotations")
-        .update({ tracker_id: tracker?.id || null })
+        .update({ tracker_id: linkedTracker.id })
         .eq("id", quotationId);
       if (quotationLinkError) throw new Error(`Could not link quotation to customer tracker: ${quotationLinkError.message}`);
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      if (sessionData.session && tracker && ["Inquiry", "Quotation sent"].includes(tracker.stage)) {
-        const { error: stageError } = await supabaseClient
-          .from("customer_trackers")
-          .update({ stage:"Quotation Sent", updated_at:new Date().toISOString() })
-          .eq("id", tracker.id);
-        if (stageError) throw new Error(`Could not update tracker stage: ${stageError.message}`);
-      }
-      return tracker;
+      return { ...linkedTracker, created: !tracker, quotedAmount };
     }
 
     async function getNextQuotationNumber(year = new Date().getFullYear()) {
@@ -487,9 +551,11 @@
     }
 
     async function collectRecord() {
+      if (!fullModelChecked) await detectFullModel();
       const projectName = value("projectName").trim();
       if (!projectName) throw new Error("Enter a project name before adding a record.");
       const customerName = value("customerName").trim();
+      if (!customerName) throw new Error("Enter a customer name before adding a record.");
       const { data: matchingRecords, error: matchingError } = await supabaseClient
         .from("quotations")
         .select("id, quotation_number, customer_name, project_name")
@@ -503,6 +569,7 @@
         normalizeMatch(record.customer_name) === customerKey &&
         normalizeMatch(record.project_name) === projectKey
       );
+      let supersedesId = null;
       let quotationNumber = matchingRecord ? matchingRecord.quotation_number : value("quoteNo").trim();
       if (!quotationNumber) quotationNumber = await getNextQuotationNumber();
 
@@ -544,23 +611,39 @@
       };
 
       if (matchingRecord) {
-        const overwrite = window.confirm(`A quotation already exists for:\nCustomer: ${customerName}\nProject: ${projectName}\n\nOK: overwrite this customer's quotation\nCancel: add another record`);
+        const overwrite = window.confirm(`A quotation already exists for:\nCustomer: ${customerName}\nProject: ${projectName}\n\nOK: save a new revision\nCancel: add another quotation`);
         if (!overwrite) {
+          delete record.id;
+          record.quotation_number = await getNextQuotationNumber();
+          record.quotation_year = Number(record.quotation_number.slice(0, 4));
+        } else if (fullModelAvailable) {
+          supersedesId = matchingRecord.id;
           delete record.id;
           record.quotation_number = await getNextQuotationNumber();
           record.quotation_year = Number(record.quotation_number.slice(0, 4));
         }
       }
+      const quotedAmount = items.reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
       const { data: savedQuotation, error: saveError } = await supabaseClient
         .from("quotations")
         .upsert(record)
         .select("id")
         .single();
       if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
-      const linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name);
+      const linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name, quotedAmount);
+      const projectRecord = await syncFullModel(
+        savedQuotation.id,
+        linkedTracker.id,
+        record.customer_name,
+        record.project_name,
+        quotedAmount,
+        supersedesId
+      );
       fields.quoteNo.value = record.quotation_number;
       render();
-      setExportStatus(`Saved quotation ${record.quotation_number} online${linkedTracker ? " and linked to the customer tracker" : ""}.`, "success");
+      const trackerAction = linkedTracker.created ? "created" : "updated";
+      const revisionSummary = projectRecord ? ` · Revision ${projectRecord.revisionNumber}` : "";
+      setExportStatus(`Saved quotation ${record.quotation_number}${revisionSummary}. Customer Tracker ${trackerAction}: ${linkedTracker.project_name} · ${linkedTracker.stage} · Quoted ${money(linkedTracker.quotedAmount)}.`, "success");
     }
 
     async function createPaperImage() {
@@ -663,7 +746,7 @@
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".autocomplete-field")) closeCustomerSuggestions();
     });
-    window.quotationDetailsReady = initializeQuotationDetails();
+    window.quotationDetailsReady = Promise.all([detectFullModel(), initializeQuotationDetails()]);
     loadTrackerSuggestions().catch((error) => {
       setExportStatus(error.message, "error");
     });

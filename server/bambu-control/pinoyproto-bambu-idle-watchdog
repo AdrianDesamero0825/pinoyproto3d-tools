@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONTAINER="bambu-studio"
+DESKTOP_PORT="3001"
+IDLE_SECONDS="900"
+STATE_DIR="/var/lib/pinoyproto-bambu-idle-watchdog"
+LAST_ACTIVE_FILE="$STATE_DIR/last-active"
+
+install -d -o root -g root -m 700 "$STATE_DIR"
+
+if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+  logger -t pinoyproto-bambu-watchdog "Container $CONTAINER not found; leaving it alone"
+  exit 0
+fi
+
+if [ "$(docker inspect --format '{{.State.Status}}' "$CONTAINER")" != "running" ]; then
+  rm -f "$LAST_ACTIVE_FILE"
+  exit 0
+fi
+
+now="$(date +%s)"
+active_connections="$(ss -Htn state established "( sport = :$DESKTOP_PORT )" | wc -l)"
+
+if [ "$active_connections" -gt 0 ]; then
+  printf '%s\n' "$now" > "$LAST_ACTIVE_FILE"
+  exit 0
+fi
+
+if [ ! -s "$LAST_ACTIVE_FILE" ]; then
+  printf '%s\n' "$now" > "$LAST_ACTIVE_FILE"
+  logger -t pinoyproto-bambu-watchdog "No desktop stream is connected; starting the 15-minute timer"
+  exit 0
+fi
+
+last_active="$(cat "$LAST_ACTIVE_FILE")"
+if ! [[ "$last_active" =~ ^[0-9]+$ ]]; then
+  printf '%s\n' "$now" > "$LAST_ACTIVE_FILE"
+  logger -t pinoyproto-bambu-watchdog "Reset invalid idle timer state"
+  exit 0
+fi
+
+if [ "$((now - last_active))" -lt "$IDLE_SECONDS" ]; then
+  exit 0
+fi
+
+# Recheck immediately before stopping to avoid racing a reconnect.
+sleep 2
+active_connections="$(ss -Htn state established "( sport = :$DESKTOP_PORT )" | wc -l)"
+if [ "$active_connections" -gt 0 ]; then
+  printf '%s\n' "$(date +%s)" > "$LAST_ACTIVE_FILE"
+  logger -t pinoyproto-bambu-watchdog "A desktop stream reconnected; keeping Bambu Studio running"
+  exit 0
+fi
+
+if [ "$(docker inspect --format '{{.State.Status}}' "$CONTAINER")" = "running" ]; then
+  logger -t pinoyproto-bambu-watchdog "No desktop stream for 15 minutes; stopping Docker container $CONTAINER"
+  docker stop --time 30 "$CONTAINER" >/dev/null
+fi
+rm -f "$LAST_ACTIVE_FILE"

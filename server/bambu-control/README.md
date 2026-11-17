@@ -1,32 +1,38 @@
-# Bambu Studio power controls
+# Bambu Studio status, power control, and idle shutdown
 
-This companion API lets the website admin check, start, or stop only the Docker container named `bambu-studio`. It does not expose the Docker socket or accept arbitrary Docker commands. Run it on the Bambu host or another trusted machine that can reach Docker locally.
+The Bambu Studio page shows the Docker app's state, active desktop connection count, and the watchdog's approximate idle countdown. It refreshes every 30 seconds for signed-in admins and can start or stop only the `bambu-studio` Docker container. The control API still requires an authenticated Supabase admin and the Cloudflare-protected `/api/bambu/*` tunnel route.
 
-## Install on the Docker host
+## Update the website control API
 
-1. Copy `pinoyproto-bambu-control` to `/usr/local/sbin/pinoyproto-bambu-control`, owned by root and not writable by the API account. Confirm Docker is installed at `/usr/bin/docker`; adjust the helper if it is elsewhere.
-2. Create a dedicated unprivileged account named `bambu-control` and a Python virtual environment for this API.
-3. Install `requirements.txt` into that environment and copy `main.py` to a root-owned application directory readable but not writable by `bambu-control`.
-4. Create `/etc/sudoers.d/pinoyproto-bambu-control` with the API account name and these exact command grants (replace `bambu-control` if you chose another account):
+The API used to report whether Proxmox LXC 101 was running, which could say “running” even when its Bambu Studio Docker app was stopped. The updated API checks, starts, and stops the Docker app itself. It uses a root-owned command wrapper with narrowly limited `sudo` permissions instead of Proxmox API credentials.
 
-   ```sudoers
-   bambu-control ALL=(root) NOPASSWD: /usr/local/sbin/pinoyproto-bambu-control status, /usr/local/sbin/pinoyproto-bambu-control start, /usr/local/sbin/pinoyproto-bambu-control stop
-   ```
+From Windows PowerShell in the project folder, copy the updated files to the Proxmox host:
 
-   Validate it with `visudo -cf /etc/sudoers.d/pinoyproto-bambu-control`. Do not add the API account to the Docker group; the restricted helper is the only privileged path.
-5. Create a root-owned environment file for the service with:
+```powershell
+scp -r ".\server\bambu-control" root@192.168.1.105:/root/
+```
 
-   ```ini
-   SUPABASE_URL=https://cifxwhhdkmecgomwesnk.supabase.co
-   SUPABASE_PUBLISHABLE_KEY=sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo
-   BAMBU_ADMIN_EMAILS=your-admin-email@example.com
-   CONTROL_ALLOWED_ORIGINS=https://adriandesamero0825.github.io,http://localhost:5500,http://127.0.0.1:5500
-   ```
+At the Proxmox host prompt (`root@pve:~#`), push the API and wrapper into LXC 101, then restart the service:
 
-   Set `BAMBU_ADMIN_EMAILS` to the exact Supabase Auth email allowed to operate the container. The publishable key is public by design; never put a Supabase secret or service-role key in this service or website.
-6. Install the included systemd unit (edit its working directory and virtual-environment paths to match your install) and run Uvicorn bound to `127.0.0.1:8788`, not `0.0.0.0`. If published through Cloudflare Tunnel, configure Access to allow only your identity. Do not create a public unauthenticated route to this API. Because the website calls this API cross-origin, the page must send credentials and the API permits credentialed CORS only from the configured exact origins.
-7. Set the Bambu Studio page's **Private control service address** to the API's HTTPS hostname, for example `https://studio-control.example.com`.
+```bash
+pct exec 101 -- mkdir -p /root/bambu-control
+pct push 101 /root/bambu-control/main.py /root/bambu-control/main.py
+pct push 101 /root/bambu-control/pinoyproto-bambu-control /root/bambu-control/pinoyproto-bambu-control
+pct push 101 /root/bambu-control/update-control.sh /root/bambu-control/update-control.sh
+pct exec 101 -- bash /root/bambu-control/update-control.sh
+```
 
-The website sends its current Supabase access token as a bearer token. This API asks Supabase Auth to validate the token and checks the verified email against `BAMBU_ADMIN_EMAILS`. CORS is restricted to the website origin. Cloudflare Access should also protect the control API hostname as a separate outer gate; sign into the Access-protected hostname in the browser first if Access requires a session before allowing the page's API requests.
+This preserves the existing allowed website admin email and Supabase settings. It removes the old, no-longer-needed Proxmox API token values from the control service environment file.
 
-The UI's Stop button asks for confirmation because it closes the remote desktop. Save work before stopping. Start and stop act only on the named container; they do not alter its restart policy or remove its data.
+## 15-minute disconnected-desktop watchdog
+
+The watchdog runs inside LXC 101 and checks every 30 seconds for an established connection to the Bambu Studio desktop on port 3001. After 15 minutes without a desktop connection, it gracefully stops only the `bambu-studio` Docker container. Proxmox and LXC 101 stay on, so the Cloudflare Tunnel and status API remain available.
+
+Install it from the Proxmox host shell:
+
+```bash
+pct exec 101 -- bash /root/bambu-control/install-idle-watchdog.sh
+pct exec 101 -- systemctl --no-pager status pinoyproto-bambu-idle-watchdog.timer
+```
+
+The timer runs the watchdog check every 30 seconds. Its last-active timestamp is stored at `/var/lib/pinoyproto-bambu-idle-watchdog/last-active` inside LXC 101. Watchdog events are logged with the journal tag `pinoyproto-bambu-watchdog`.

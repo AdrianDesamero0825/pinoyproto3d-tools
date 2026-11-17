@@ -1,10 +1,12 @@
 import json
+import logging
 import os
 import subprocess
+import time
 import urllib.error
 import urllib.request
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -20,12 +22,13 @@ ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CONTROL_ALLOWED_ORIGINS",
-        "https://adriandesamero0825.github.io,http://localhost:5500,http://127.0.0.1:5500",
+        "https://www.pinoyproto3d.stream,https://adriandesamero0825.github.io,http://localhost:5500,http://127.0.0.1:5500",
     ).split(",")
     if origin.strip()
 ]
 
 app = FastAPI(title="PinoyProto Bambu Studio Control", docs_url=None, redoc_url=None)
+logger = logging.getLogger("bambu-control")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -65,20 +68,35 @@ def require_admin(authorization: str | None = Header(default=None)) -> dict:
     return {"email": email}
 
 
-def run_fixed_action(action: str) -> str:
+def run_control_command(action: str) -> str:
     try:
-        completed = subprocess.run(
+        result = subprocess.run(
             ["sudo", "-n", CONTROL_COMMAND, action],
+            check=True,
             capture_output=True,
             text=True,
-            timeout=30,
-            check=False,
+            timeout=15,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise HTTPException(status_code=503, detail="The restricted Bambu control helper is unavailable.") from error
-    if completed.returncode != 0:
-        raise HTTPException(status_code=502, detail="The Bambu container command failed.")
-    return completed.stdout.strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+        logger.exception("Docker control action %s failed", action)
+        raise HTTPException(status_code=502, detail="Could not read or control the Bambu Studio Docker app.") from error
+    return result.stdout.strip()
+
+
+def get_studio_running() -> bool:
+    state = run_control_command("status").lower()
+    if state not in {"true", "false"}:
+        raise HTTPException(status_code=502, detail="Docker returned an unknown Bambu Studio status.")
+    return state == "true"
+
+
+def stop_studio_after_response() -> None:
+    # Let the response travel back through cloudflared before stopping the desktop.
+    time.sleep(3)
+    try:
+        run_control_command("stop")
+    except HTTPException:
+        logger.exception("Docker did not accept the Bambu Studio stop request")
 
 
 @app.get("/health")
@@ -88,19 +106,25 @@ def health() -> dict:
 
 @app.get("/api/bambu/status")
 def status(_user: dict = Depends(require_admin)) -> dict:
-    running = run_fixed_action("status")
-    if running not in {"true", "false"}:
-        raise HTTPException(status_code=502, detail="The helper returned an invalid container status.")
-    return {"running": running == "true"}
+    try:
+        details = json.loads(run_control_command("watch"))
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail="Could not read Bambu Studio connection status.") from error
+    if not isinstance(details, dict) or not isinstance(details.get("running"), bool):
+        raise HTTPException(status_code=502, detail="Docker returned an invalid Bambu Studio status.")
+    details["status"] = "running" if details["running"] else "stopped"
+    return details
 
 
 @app.post("/api/bambu/start")
 def start(_user: dict = Depends(require_admin)) -> dict:
-    run_fixed_action("start")
-    return {"ok": True, "running": True}
+    run_control_command("start")
+    return {"ok": True, "running": True, "status": "started"}
 
 
 @app.post("/api/bambu/stop")
-def stop(_user: dict = Depends(require_admin)) -> dict:
-    run_fixed_action("stop")
-    return {"ok": True, "running": False}
+def stop(background_tasks: BackgroundTasks, _user: dict = Depends(require_admin)) -> dict:
+    if not get_studio_running():
+        return {"ok": True, "status": "already_stopped"}
+    background_tasks.add_task(stop_studio_after_response)
+    return {"ok": True, "status": "shutdown_requested"}

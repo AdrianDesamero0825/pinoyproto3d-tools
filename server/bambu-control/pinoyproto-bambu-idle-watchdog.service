@@ -1,0 +1,9 @@
+[Unit]
+Description=Stop Bambu Studio after 15 minutes without a desktop connection
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pinoyproto-bambu-idle-watchdog
+TimeoutStartSec=45

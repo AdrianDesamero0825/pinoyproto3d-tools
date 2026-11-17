@@ -5,12 +5,33 @@ case "${1-}" in
   status)
     /usr/bin/docker inspect --format '{{.State.Running}}' bambu-studio
     ;;
+  watch)
+    running=$(/usr/bin/docker inspect --format '{{.State.Running}}' bambu-studio)
+    connections=$(/usr/bin/ss -Htn state established '( sport = :3001 )' | /usr/bin/awk 'END {print NR+0}')
+    last_active_file=/var/lib/pinoyproto-bambu-idle-watchdog/last-active
+    last_active=null
+    remaining=null
+    if [ "$running" = "true" ] && [ -r "$last_active_file" ]; then
+      saved_time=$(cat "$last_active_file")
+      case "$saved_time" in
+        ''|*[!0-9]*) ;;
+        *)
+          now=$(/usr/bin/date +%s)
+          last_active=$saved_time
+          remaining=$((900 - now + saved_time))
+          [ "$remaining" -lt 0 ] && remaining=0
+          ;;
+      esac
+    fi
+    printf '{"running":%s,"active_connections":%s,"last_active":%s,"idle_seconds_remaining":%s}\n' \
+      "$running" "$connections" "$last_active" "$remaining"
+    ;;
   start)
     running=$(/usr/bin/docker inspect --format '{{.State.Running}}' bambu-studio)
-    if [ "$running" = "false" ]; then
-      /usr/bin/docker start bambu-studio
-    else
+    if [ "$running" = "true" ]; then
       echo "already running"
+    else
+      /usr/bin/docker start bambu-studio
     fi
     ;;
   stop)
@@ -22,7 +43,7 @@ case "${1-}" in
     fi
     ;;
   *)
-    echo "Allowed actions: status, start, stop" >&2
+    echo "Allowed actions: status, watch, start, stop" >&2
     exit 2
     ;;
 esac
