@@ -7,9 +7,7 @@ services:
       PGID: "${PGID:-1000}"
       TZ: Asia/Manila
       DARK_MODE: "true"
-      CUSTOM_USER: "${BAMBU_STUDIO_USER:?Set BAMBU_STUDIO_USER in .env}"
-      PASSWORD: "${BAMBU_STUDIO_PASSWORD:?Set BAMBU_STUDIO_PASSWORD in .env}"
-      SELKIES_FRAME_ANCESTORS: "https://adriandesamero0825.github.io,http://localhost:*,http://127.0.0.1:*"
+      SELKIES_FRAME_ANCESTORS: "https://www.pinoyproto3d.stream,https://adriandesamero0825.github.io,http://localhost:*,http://127.0.0.1:*"
     volumes:
       - ./config:/config
     ports:

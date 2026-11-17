@@ -92,10 +92,10 @@
           <label for="studioAddress">Bambu Studio address
             <input id="studioAddress" type="url" inputmode="url" autocomplete="url" spellcheck="false" required>
           </label>
-          <button class="primary-button" type="submit">Load in this page</button>
+          <button class="primary-button" type="submit">Sign in, then return here</button>
         </form>
-        <p class="hint">The address is saved only in this browser. The desktop is embedded below.</p>
-        <p class="status success" id="studioStatus" aria-live="polite">Bambu Studio is available at studio.pinoyproto3d.stream. Sign in through Cloudflare Access to connect from any network.</p>
+        <p class="hint">After completing sign-in in the new tab, close it. The desktop will load here automatically.</p>
+        <p class="status success" id="studioStatus" aria-live="polite">Sign in in a new tab; closing it after sign-in returns you to the desktop here.</p>
       </section>
       <section class="studio-panel" aria-labelledby="power-title">
         <h2 id="power-title">Server power</h2>
@@ -112,11 +112,11 @@
       <div class="studio-frame-wrap">
         <iframe id="studioFrame" class="studio-frame" title="Bambu Studio remote desktop" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
       </div>
-      <p class="hint frame-help">If the Cloudflare sign-in does not open inside the page, <a id="certificateLink" href="https://studio.pinoyproto3d.stream/" target="_blank" rel="noopener noreferrer">open Bambu Studio in a new tab and sign in</a>, then return here and reload the embedded desktop.</p>
+      <p class="hint frame-help">Cloudflare’s one-time PIN opens outside the embedded desktop. <a id="certificateLink" href="https://studio.pinoyproto3d.stream/" target="_blank" rel="noopener noreferrer">Open sign-in in a new tab</a> if the button is blocked; close that tab after sign-in to load the desktop here.</p>
       <div class="steps" aria-label="Connection steps">
         <article class="step"><strong>Open from anywhere</strong><p>Use the secure studio.pinoyproto3d.stream address from your home Wi-Fi or another network.</p></article>
-        <article class="step"><strong>Cloudflare sign-in</strong><p>Enter the email PIN for an address allowed by the Bambu Studio Access policy.</p></article>
-        <article class="step"><strong>Desktop sign-in</strong><p>After Access, sign in with the separate Bambu Studio desktop credentials configured on the server.</p></article>
+        <article class="step"><strong>Cloudflare sign-in</strong><p>Use “Sign in” to open a new tab and enter the email PIN for an allowed address.</p></article>
+        <article class="step"><strong>Return to this page</strong><p>After sign-in is complete, close the new tab. The page detects it and starts the desktop stream here.</p></article>
       </div>
       <p class="security-note">The browser desktop includes a terminal with administrator access inside its container. Keep its login private. The website never stores or sends the desktop password.</p>
     </main>
@@ -137,12 +137,12 @@
     window.installAdminSessionTimeout(supabaseClient);
     const defaultStudioAddress = "https://studio.pinoyproto3d.stream/";
     const studioAddressStorageKey = "pinoyproto3d-bambu-studio-address";
+    let signInWatchTimer = null;
     const savedStudioAddress = localStorage.getItem(studioAddressStorageKey);
     if (savedStudioAddress === "https://192.168.1.250:3001/") {
       localStorage.setItem(studioAddressStorageKey, defaultStudioAddress);
     }
     studioAddress.value = localStorage.getItem(studioAddressStorageKey) || defaultStudioAddress;
-    studioFrame.src = studioAddress.value;
     certificateLink.href = studioAddress.value;
     controlAddress.value = localStorage.getItem("pinoyproto3d-bambu-control-address") || "";
     let isAdmin = false;
@@ -218,10 +218,7 @@
       try {
         await controlRequest(action);
         await refreshPowerStatus();
-        if (action === "start") {
-          const address = new URL(studioAddress.value);
-          studioFrame.src = address.href;
-        } else {
+        if (action === "stop") {
           studioFrame.removeAttribute("src");
         }
       } catch (error) {
@@ -232,6 +229,23 @@
     }
     startButton.addEventListener("click", () => setPower("start"));
     stopButton.addEventListener("click", () => setPower("stop"));
+    function openSignInTab(address) {
+      const signInTab = window.open(address.href, "_blank");
+      if (!signInTab) {
+        reportStatus("Your browser blocked the new tab. Allow pop-ups for this site, then try again.");
+        return;
+      }
+      signInTab.opener = null;
+      if (signInWatchTimer) window.clearInterval(signInWatchTimer);
+      reportStatus("Complete the Cloudflare PIN and desktop sign-in in the new tab, then close it. The desktop will load here automatically.", true);
+      signInWatchTimer = window.setInterval(() => {
+        if (!signInTab.closed) return;
+        window.clearInterval(signInWatchTimer);
+        signInWatchTimer = null;
+        studioFrame.src = address.href;
+        reportStatus("Sign-in tab closed. Loading the desktop here…", true);
+      }, 500);
+    }
     updatePowerControls();
     supabaseClient.auth.getSession().then(({ data }) => {
       isAdmin = Boolean(data.session);
@@ -249,8 +263,17 @@
       }
       localStorage.setItem("pinoyproto3d-bambu-studio-address", address.href);
       certificateLink.href = address.href;
-      studioFrame.src = address.href;
-      reportStatus("Loading the desktop here. Sign in with the separate desktop login configured on your server.", true);
+      openSignInTab(address);
+    });
+    certificateLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      try {
+        const address = new URL(studioAddress.value.trim());
+        if (address.protocol !== "https:" || address.username || address.password) throw new Error();
+        openSignInTab(address);
+      } catch {
+        reportStatus("Use a valid Bambu Studio HTTPS address first.");
+      }
     });
     function reportStatus(message, success = false) {
       studioStatus.textContent = message;
