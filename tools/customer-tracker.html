@@ -195,6 +195,7 @@
     let editingId = null;
     let editingModelFile = null;
     let session = null;
+    let isAdmin = false;
     let fullModelAvailable = false;
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
     const normalizeMatch = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -468,15 +469,36 @@
       driveStatus.textContent = message;
       driveStatus.className = `drive-status${type ? ` ${type}` : ""}`;
     }
-    function setAdminState(nextSession) {
+    async function setAdminState(nextSession) {
       session = nextSession;
+      isAdmin = false;
       const loggedIn = Boolean(session);
       [...trackerEditor.querySelectorAll("input, select, textarea, button")].forEach((control) => {
         control.disabled = !loggedIn;
       });
       logoutButton.hidden = !loggedIn;
-      adminSessionLabel.textContent = loggedIn ? `Signed in as ${session.user.email}. Manage this shared session from the homepage.` : "Sign in from the homepage to enable admin features across the website.";
-      if (!loggedIn) resetForm();
+      adminSessionLabel.textContent = loggedIn ? `Signed in as ${session.user.email}. Checking permissions...` : "Sign in from the homepage to enable admin features across the website.";
+      if (loggedIn) {
+        const sessionUserId = session.user.id;
+        const { data: membership, error } = await supabaseClient
+          .from("team_members")
+          .select("role, active")
+          .eq("user_id", sessionUserId)
+          .maybeSingle();
+        if (session?.user?.id !== sessionUserId) return;
+        if (error) {
+          adminSessionLabel.textContent = `Could not verify permissions: ${error.message}`;
+          statusElement.textContent = "Permission verification failed. Updates are locked.";
+          statusElement.className = "status error";
+        } else {
+          isAdmin = Boolean(membership?.active && ["owner", "admin"].includes(membership.role));
+          adminSessionLabel.textContent = isAdmin
+            ? `Signed in as ${session.user.email}. Admin updates enabled.`
+            : `Signed in as ${session.user.email}. View and create enabled; record updates require an admin.`;
+        }
+      } else {
+        resetForm();
+      }
       renderTrackers();
     }
     function showModelFileLink(modelFile) {
@@ -516,8 +538,8 @@
       }
       const renderTrackerCard = (tracker) => {
         const progress = stageProgress(tracker.stage);
-        const adminControls = session ? `<button class="secondary tracker-update-button" type="button" data-edit-id="${escapeHtml(tracker.id)}">Update</button>` : "";
-        const adminActions = session ? `<div class="tracker-actions"><button type="button" data-edit-id="${escapeHtml(tracker.id)}">Edit</button><button class="danger" type="button" data-delete-id="${escapeHtml(tracker.id)}">Delete</button></div>` : "";
+        const adminControls = isAdmin ? `<button class="secondary tracker-update-button" type="button" data-edit-id="${escapeHtml(tracker.id)}">Update</button>` : "";
+        const adminActions = isAdmin ? `<div class="tracker-actions"><button type="button" data-edit-id="${escapeHtml(tracker.id)}">Edit</button><button class="danger" type="button" data-delete-id="${escapeHtml(tracker.id)}">Delete</button></div>` : "";
         const modelFileLink = tracker.modelFile?.url ? `<div class="tracker-notes">Model file: <a href="${escapeHtml(tracker.modelFile.url)}" target="_blank" rel="noopener">${escapeHtml(tracker.modelFile.name || "Open model file")}</a></div>` : "";
         const quotedAmount = tracker.quotedAmount || (tracker.quotation ? quotationTotal(tracker.quotation) : 0);
         const paidAmount = tracker.paidAmount || 0;
@@ -544,7 +566,11 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!session) {
-        setDriveStatus("Log in as admin before saving a tracker.", "error");
+        setDriveStatus("Log in before saving a tracker.", "error");
+        return;
+      }
+      if (editingId && !isAdmin) {
+        setDriveStatus("Only an admin can update an existing tracker.", "error");
         return;
       }
       const stage = stageInput.value;

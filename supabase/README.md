@@ -24,6 +24,10 @@ Apply `migrations/20261118010000_enterprise_hardening.sql` after the business-mo
 
 Existing authenticated users are seeded as owners during this transition. Review `team_members` afterward and reduce each user's role to the minimum required access.
 
+## Admin-only updates
+
+Apply `migrations/20261118020000_admin_only_updates.sql` after the enterprise-hardening migration. Operators can still create quotations, trackers, projects, and payment entries, but only owners and admins can update existing quotations, trackers, or projects. The customer tracker also hides edit/update/delete controls for non-admin users.
+
 The migration is designed to preserve existing records. Review the generated project list before deleting or merging any duplicates.
 
 ```powershell
