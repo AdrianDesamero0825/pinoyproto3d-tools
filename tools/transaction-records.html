@@ -9,8 +9,8 @@
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),var(--color-page); font:14px/1.45 var(--font-ui); }
     .app { display:grid; grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); min-height:100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
-    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    nav { position:fixed; top:0; left:0; z-index:10; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
+    .brand { margin:0 8px 8px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     .nav-scroll-hint { display:none; }
     .back,.tool-link { color:var(--ink); text-decoration:none; }
     .back { margin:0 8px 24px; color:var(--muted); font-weight:700; }
@@ -41,7 +41,9 @@
     .transaction-card p { margin:0; }
     .transaction-card strong { color:var(--ink); }
     .empty { padding:26px; border:1px dashed var(--line); border-radius:var(--radius-card); color:var(--muted); text-align:center; }
-    @media (max-width:700px) { .app { display:block; } nav { position:static; height:auto; flex-direction:row; align-items:center; gap:8px; padding:var(--space-nav-mobile-block) var(--space-4); overflow-x:auto; } .brand { flex:0 0 auto; margin:0 8px 0 0; } .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:rgba(255,114,0,.12); font-size:10px; font-weight:800; white-space:nowrap; } .back,.nav-label { display:none; } .tool-link { flex:0 0 auto; white-space:nowrap; } .saved-link { margin-top:0; padding-top:10px; border-top:0; } main { padding:34px 18px; } .admin-panel form { flex-wrap:wrap; } }
+    @media (max-width:700px) { .app { display:block; } nav { position:static; height:auto; flex-direction:row; align-items:center; gap:8px; padding:var(--space-nav-mobile-block) var(--space-4); overflow-x:auto; } .brand { flex:0 0 auto; margin:0 8px 0 0; } .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(255,114,0,.4); border-radius:99px; color:#ffb37a; background:rgba(255,114,0,.12); font-size:10px; font-weight:800; white-space:nowrap; } .nav-label { display:none; } .tool-link { flex:0 0 auto; white-space:nowrap; } .saved-link { margin-top:0; padding-top:10px; border-top:0; } main { padding:34px 18px; } .admin-panel form { flex-wrap:wrap; } }
+    @media (min-width: 701px) { .app { grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); } .app > nav { grid-column:1; width:var(--layout-sidebar-width); } .app > main { grid-column:2; } .brand-subtitle { margin:0 8px 8px; color:var(--muted); font-size:12px; } }
+    @media (max-width: 700px) { .brand-subtitle { display:none; } }
   </style>
   <link rel="stylesheet" href="../assets/css/design-system.css">
 </head>
@@ -49,16 +51,16 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <p class="brand-subtitle">Production tools</p>
       <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
-      <a class="back" href="../index.html">← Return to home</a>
+      <a class="back" href="../index.html">&larr; Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
       <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
       <p class="nav-label">Tools</p>
-      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="customer-feedback.html">Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="price-estimator.html">Price Estimator</a>
-      <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
+      <a class="tool-link" href="new-tool.html">Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link active" href="transaction-records.html">Transactions Done</a>
     </nav>
@@ -66,11 +68,9 @@
       <h1>Transactions done</h1>
       <p class="intro">Completed customer orders are managed separately from saved quotations.</p>
       <div class="toolbar"><input id="searchInput" type="search" placeholder="Search project or customer" aria-label="Search transactions"></div>
-      <section class="admin-panel" aria-label="Admin login">
+      <section class="admin-panel" aria-label="Admin session">
         <h2>Admin access</h2>
-        <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
-        <form id="loginForm"><input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" required><input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" required><button type="submit">Log in</button></form>
-        <span class="admin-user" id="adminUser" hidden></span><button class="secondary" id="logoutButton" type="button" hidden>Log out</button>
+        <p class="admin-timeout-note" id="adminSessionLabel">Checking shared admin session…</p><button class="secondary" id="logoutButton" type="button" hidden>Log out</button>
       </section>
       <p class="status" id="status" aria-live="polite">Loading completed transactions…</p>
       <section class="records" id="transactions" aria-label="Completed transactions"></section>
@@ -79,7 +79,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
-    const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    const supabaseClient = window.createAdminSupabaseClient();
     window.installAdminSessionTimeout(supabaseClient);
     const transactionsElement = document.getElementById("transactions");
     const statusElement = document.getElementById("status");
@@ -88,10 +88,7 @@
       statusElement.className = "status";
     });
     const searchInput = document.getElementById("searchInput");
-    const loginForm = document.getElementById("loginForm");
-    const emailInput = document.getElementById("emailInput");
-    const passwordInput = document.getElementById("passwordInput");
-    const adminUser = document.getElementById("adminUser");
+    const adminSessionLabel = document.getElementById("adminSessionLabel");
     const logoutButton = document.getElementById("logoutButton");
     let session = null;
     let transactions = [];
@@ -112,10 +109,8 @@
     }
     function setAdminState(nextSession) {
       session = nextSession;
-      loginForm.hidden = Boolean(session);
-      adminUser.hidden = !session;
       logoutButton.hidden = !session;
-      adminUser.textContent = session ? `Logged in as ${session.user.email}` : "";
+      adminSessionLabel.textContent = session ? `Signed in as ${session.user.email}. Manage this shared session from the homepage.` : "Sign in from the homepage to enable admin features across the website.";
       render();
     }
     async function load() {
@@ -138,7 +133,6 @@
       await load();
     }
     searchInput.addEventListener("input", render);
-    loginForm.addEventListener("submit", async (event) => { event.preventDefault(); const { data, error } = await supabaseClient.auth.signInWithPassword({ email:emailInput.value.trim(), password:passwordInput.value }); if (error) { statusElement.textContent = `Login failed: ${error.message}`; statusElement.className = "status error"; return; } passwordInput.value = ""; setAdminState(data.session); });
     logoutButton.addEventListener("click", async () => { const { error } = await supabaseClient.auth.signOut(); if (error) { statusElement.textContent = `Could not log out: ${error.message}`; statusElement.className = "status error"; return; } setAdminState(null); });
     transactionsElement.addEventListener("click", async (event) => { const button = event.target.closest("[data-delete-id]"); if (!button) return; button.disabled = true; try { await deleteTransaction(button.dataset.deleteId); } catch (error) { statusElement.textContent = `Could not delete transaction: ${error.message}`; statusElement.className = "status error"; button.disabled = false; } });
     supabaseClient.auth.onAuthStateChange((_event, authSession) => setAdminState(authSession));

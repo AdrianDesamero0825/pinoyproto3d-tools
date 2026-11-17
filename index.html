@@ -30,7 +30,7 @@
       font: 15px/1.5 var(--font-ui);
     }
     .app { display: grid; grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr); min-height: 100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
+    nav { position:fixed; top:0; left:0; z-index:10; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
     .brand { margin: 0 8px 8px; color: var(--orange); font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .brand-subtitle { margin: 0 8px 30px; color: var(--muted); font-size: 12px; }
     .nav-label { margin: 18px 8px 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -43,6 +43,13 @@
     .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--line); }
     .nav-scroll-hint { display:none; }
     main { width: min(100%, var(--layout-content-width)); margin:0 auto; padding:clamp(28px, 6vw, 78px) clamp(18px, 5vw, 64px); }
+    .workspace-main { width:auto; min-width:0; max-width:none; height:100vh; height:100dvh; margin:0; padding:0; overflow:hidden; }
+    .home-view { width:min(100%, var(--layout-content-width)); margin:0 auto; padding:clamp(28px, 6vw, 78px) clamp(18px, 5vw, 64px); }
+    .tool-frame { display:block; width:100%; height:100%; border:0; background:var(--color-page); }
+    .tool-frame[hidden], .home-view[hidden] { display:none; }
+    .tool-link[aria-current="page"] { border-color:rgba(255,114,0,.45); background:var(--orange-soft); }
+    .return-link { margin:0 8px 16px; padding:7px 0; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .return-link:hover, .return-link:focus-visible { color:var(--orange); }
     .hero { max-width: 760px; }
     .eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
     h1 { margin: 10px 0 16px; font-size: clamp(38px, 7vw, 72px); line-height: .98; letter-spacing: -.06em; }
@@ -60,6 +67,17 @@
     .tool-card h2 { margin: 28px 0 8px; font-size: 22px; letter-spacing: -.03em; }
     .tool-card p { max-width: 350px; margin: 0; color: var(--muted); }
     .card-link { margin-top: 20px; color: #ffb37a; font-size: 13px; font-weight: 800; }
+    .admin-panel { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:28px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+    .admin-panel h2 { flex:1 0 100%; margin:0; font-size:16px; }
+    .admin-panel p { flex:1 0 100%; margin:0; color:var(--muted); font-size:13px; }
+    .admin-panel form { display:flex; flex:1 1 100%; flex-wrap:wrap; gap:10px; }
+    .admin-panel input { flex:1 1 180px; min-width:0; padding:11px 12px; border:1px solid var(--line); border-radius:9px; color:var(--ink); background:var(--color-page); font:inherit; }
+    .admin-panel button { padding:11px 15px; border:0; border-radius:9px; color:white; background:var(--orange); font:inherit; font-weight:800; cursor:pointer; }
+    .admin-panel button.secondary { background:#2a3848; }
+    .admin-panel button[hidden] { display:none; }
+    .admin-user { color:#8ee0a4; font-size:13px; }
+    .admin-status { flex:1 0 100%; min-height:20px; margin:0; color:var(--muted); font-size:13px; }
+    .admin-status.error { color:#ff9a9a; }
     @media (max-width: 700px) {
       .app { display: block; }
       nav { position:static; display: flex; height:auto; min-height:0; align-items: center; gap: 10px; padding: var(--space-nav-mobile-block) var(--space-4); border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -69,8 +87,12 @@
       .tool-link { flex: 0 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap; }
       .saved-link { margin-top:0; padding-top:10px; border-top:0; }
       main { padding: 42px 20px 50px; }
+      .workspace-main { height:calc(100dvh - 64px); padding:0; }
+      .home-view { padding:28px 20px 42px; }
       .tools-grid { grid-template-columns: 1fr; margin-top: 34px; }
     }
+
+    @media (min-width: 701px) { .app > nav { grid-column:1; width:var(--layout-sidebar-width); } .app > main { grid-column:2; } }
   </style>
   <link rel="stylesheet" href="assets/css/design-system.css">
 </head>
@@ -78,27 +100,40 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
-      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
       <p class="brand-subtitle">Production tools</p>
+      <a class="return-link" href="index.html" data-home-link>&larr; Home</a>
       <p class="nav-label">Statistics</p>
-      <a class="tool-link" href="tools/dashboard.html">Dashboard</a>
-      <a class="tool-link" href="tools/customer-tracker.html">Customer Tracker</a>
+      <a class="tool-link" href="tools/dashboard.html" data-tool="dashboard">Dashboard</a>
+      <a class="tool-link" href="tools/customer-tracker.html" data-tool="customer-tracker">Customer Tracker</a>
       <p class="nav-label">Tools</p>
-      <a class="tool-link" href="tools/customer-feedback.html">Customer Feedback Renderer</a>
-      <a class="tool-link" href="tools/quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="tools/price-estimator.html">Price Estimator</a>
-      <a class="tool-link" href="tools/new-tool.html">Carousel and Layout Builder</a>
-      <a class="tool-link saved-link" href="tools/quotation-records.html">Saved Quotations</a>
-      <a class="tool-link" href="tools/transaction-records.html">Transactions Done</a>
+      <a class="tool-link" href="tools/customer-feedback.html" data-tool="customer-feedback">Feedback Renderer</a>
+      <a class="tool-link" href="tools/quotation-maker.html" data-tool="quotation-maker">Quotation Maker</a>
+      <a class="tool-link" href="tools/bambu-studio.html" data-tool="bambu-studio">Bambu Studio</a>
+      <a class="tool-link" href="tools/new-tool.html" data-tool="new-tool">Layout Builder</a>
+      <a class="tool-link saved-link" href="tools/quotation-records.html" data-tool="quotation-records">Saved Quotations</a>
+      <a class="tool-link" href="tools/transaction-records.html" data-tool="transaction-records">Transactions Done</a>
     </nav>
-    <main>
+    <main class="workspace-main">
+      <div class="home-view" id="homeView">
       <section class="hero">
         <div class="eyebrow">PinoyProto 3D workspace</div>
         <h1>Make every deliverable look professional.</h1>
         <p>Fast, focused tools for turning your work into polished customer posts and clear quotations.</p>
       </section>
+      <section class="admin-panel" aria-label="Central admin login">
+        <h2>Website admin access</h2>
+        <p>Sign in here once to enable admin features across the website. Access ends after 15 minutes without activity.</p>
+        <form id="adminLoginForm">
+          <input id="adminEmail" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
+          <input id="adminPassword" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
+          <button type="submit">Log in</button>
+        </form>
+        <span class="admin-user" id="adminUser" hidden></span>
+        <button class="secondary" id="adminLogout" type="button" hidden>Log out everywhere</button>
+        <p class="admin-status" id="adminStatus" aria-live="polite"></p>
+      </section>
       <section class="tools-grid" aria-label="Available tools">
-        <a class="tool-card" href="tools/dashboard.html">
+        <a class="tool-card" href="tools/dashboard.html" data-tool="dashboard">
           <div>
             <div class="card-icon" aria-hidden="true">D</div>
             <h2>Dashboard</h2>
@@ -106,7 +141,7 @@
           </div>
           <span class="card-link">Open dashboard →</span>
         </a>
-        <a class="tool-card" href="tools/customer-tracker.html">
+        <a class="tool-card" href="tools/customer-tracker.html" data-tool="customer-tracker">
           <div>
             <div class="card-icon" aria-hidden="true">T</div>
             <h2>Customer Tracker</h2>
@@ -114,7 +149,7 @@
           </div>
           <span class="card-link">Open customer tracker →</span>
         </a>
-        <a class="tool-card" href="tools/customer-feedback.html">
+        <a class="tool-card" href="tools/customer-feedback.html" data-tool="customer-feedback">
           <div>
             <div class="card-icon" aria-hidden="true">↗</div>
             <h2>Customer Feedback Renderer</h2>
@@ -122,7 +157,7 @@
           </div>
           <span class="card-link">Open renderer →</span>
         </a>
-        <a class="tool-card" href="tools/quotation-maker.html">
+        <a class="tool-card" href="tools/quotation-maker.html" data-tool="quotation-maker">
           <div>
             <div class="card-icon" aria-hidden="true">₱</div>
             <h2>Quotation Maker</h2>
@@ -130,15 +165,15 @@
           </div>
           <span class="card-link">Open quotation maker →</span>
         </a>
-        <a class="tool-card" href="tools/price-estimator.html">
+        <a class="tool-card" href="tools/bambu-studio.html" data-tool="bambu-studio">
           <div>
-            <div class="card-icon" aria-hidden="true">₱</div>
-            <h2>Price Estimator</h2>
-            <p>Prepare print settings and estimate material and production pricing with OrcaSlicer.</p>
+            <div class="card-icon" aria-hidden="true">B</div>
+            <h2>Bambu Studio</h2>
+            <p>Your browser-based Bambu Studio server is ready on your home network. Open it from a phone, tablet, or computer.</p>
           </div>
-          <span class="card-link">Open price estimator →</span>
+          <span class="card-link">Open Bambu Studio →</span>
         </a>
-        <a class="tool-card" href="tools/new-tool.html">
+        <a class="tool-card" href="tools/new-tool.html" data-tool="new-tool">
           <div>
             <div class="card-icon" aria-hidden="true">C</div>
             <h2>Carousel and Layout Builder</h2>
@@ -146,7 +181,7 @@
           </div>
           <span class="card-link">Open layout builder →</span>
         </a>
-        <a class="tool-card" href="tools/quotation-records.html">
+        <a class="tool-card" href="tools/quotation-records.html" data-tool="quotation-records">
           <div>
             <div class="card-icon" aria-hidden="true">Q</div>
             <h2>Saved Quotations</h2>
@@ -154,7 +189,7 @@
           </div>
           <span class="card-link">View saved quotations →</span>
         </a>
-        <a class="tool-card" href="tools/transaction-records.html">
+        <a class="tool-card" href="tools/transaction-records.html" data-tool="transaction-records">
           <div>
             <div class="card-icon" aria-hidden="true">✓</div>
             <h2>Transactions Done</h2>
@@ -162,8 +197,46 @@
           </div>
           <span class="card-link">View completed transactions →</span>
         </a>
-      </section>
+      </div>
+      <iframe class="tool-frame" id="toolFrame" title="Selected production tool" hidden></iframe>
     </main>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/admin-session-timeout.js"></script>
+  <script src="assets/js/app-shell.js"></script>
+  <script>
+    const supabaseClient = window.createAdminSupabaseClient();
+    window.installAdminSessionTimeout(supabaseClient);
+    const loginForm = document.getElementById("adminLoginForm");
+    const emailInput = document.getElementById("adminEmail");
+    const passwordInput = document.getElementById("adminPassword");
+    const adminUser = document.getElementById("adminUser");
+    const logoutButton = document.getElementById("adminLogout");
+    const adminStatus = document.getElementById("adminStatus");
+    function setAdminState(session) {
+      loginForm.hidden = Boolean(session);
+      adminUser.hidden = !session;
+      logoutButton.hidden = !session;
+      adminUser.textContent = session ? `Signed in as ${session.user.email}` : "";
+      adminStatus.textContent = session ? "Admin access is active across the website." : "";
+      adminStatus.className = "admin-status";
+    }
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      adminStatus.textContent = "Signing in…";
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email:emailInput.value.trim(), password:passwordInput.value });
+      passwordInput.value = "";
+      if (error) { adminStatus.textContent = `Login failed: ${error.message}`; adminStatus.className = "admin-status error"; return; }
+      setAdminState(data.session);
+    });
+    logoutButton.addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) { adminStatus.textContent = `Could not log out: ${error.message}`; adminStatus.className = "admin-status error"; return; }
+      setAdminState(null);
+    });
+    supabaseClient.auth.onAuthStateChange((_event, session) => setAdminState(session));
+    supabaseClient.auth.getSession().then(({ data }) => setAdminState(data.session));
+    window.addEventListener("admin-idle-timeout", () => { adminStatus.textContent = "Admin access ended after 15 minutes of inactivity."; });
+  </script>
 </body>
 </html>

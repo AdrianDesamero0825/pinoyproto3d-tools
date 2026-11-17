@@ -34,8 +34,10 @@
 
     .tool-app { display: grid; grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr); min-height: 100vh; }
     .tool-nav {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      z-index: 10;
       display: flex;
       height: 100vh;
       height: 100dvh;
@@ -48,7 +50,7 @@
       background: var(--color-navigation);
     }
     .tool-nav-brand {
-      margin: 0 8px 28px;
+      margin: 0 8px 8px;
       color: var(--orange);
       font-size: 13px;
       font-weight: 900;
@@ -253,6 +255,9 @@
     .layout-2 .inset-stack-right .img-wrapper { background: transparent; }
     .layout-2 .card-glass { margin-bottom: 4px; }
     @media (max-width: 480px) { #view-hook h1 { font-size: 2rem; } }
+    @media (min-width: 701px) { .tool-app { grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); } .tool-app > .tool-nav { grid-column:1; width:var(--layout-sidebar-width); } .tool-app > .tool-page { grid-column:2; } .brand-subtitle { margin:0 8px 8px; color:var(--muted); font-size:12px; } }
+    @media (max-width: 700px) { .brand-subtitle { display:none; } }
+    .tool-back + .tool-nav-label { margin-top:0; }
   </style>
   <link rel="stylesheet" href="../assets/css/design-system.css" />
 </head>
@@ -260,16 +265,16 @@
   <div class="tool-app">
     <nav class="tool-nav" aria-label="Tool navigation">
       <p class="tool-nav-brand">PinoyProto 3D</p>
+      <p class="brand-subtitle">Production tools</p>
       <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
-      <a class="tool-back" href="../index.html">← Return to home</a>
+      <a class="tool-back" href="../index.html">&larr; Return to home</a>
       <p class="tool-nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
       <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
       <p class="tool-nav-label">Tools</p>
-      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="customer-feedback.html">Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="price-estimator.html">Price Estimator</a>
-      <a class="tool-link active" href="new-tool.html" aria-current="page">Carousel and Layout Builder</a>
+      <a class="tool-link active" href="new-tool.html" aria-current="page">Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>

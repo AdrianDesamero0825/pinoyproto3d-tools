@@ -2,7 +2,56 @@
   const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
   const ACTIVITY_KEY = "pinoyproto3d-admin-last-activity";
   const SIGNOUT_LOCK_KEY = "pinoyproto3d-admin-idle-signout";
+  const SESSION_KEY = "pinoyproto3d-shared-auth-session";
   const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"];
+
+  window.createAdminSupabaseClient = function createAdminSupabaseClient() {
+    const client = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo", {
+      auth: { storageKey: "pinoyproto3d-shared-auth-session", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    const originalSetSession = client.auth.setSession.bind(client.auth);
+    let applyingSharedSession = false;
+    client.auth.setSession = async (tokens) => {
+      applyingSharedSession = true;
+      try { return await originalSetSession(tokens); }
+      finally { applyingSharedSession = false; }
+    };
+    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+      if (applyingSharedSession) return;
+      try {
+        if (session && ["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"].includes(event)) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify({ access_token:session.access_token, refresh_token:session.refresh_token, event:Date.now() }));
+        } else if (event === "SIGNED_OUT" || !session) {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      } catch (_error) { /* The in-tab Supabase session continues to work without browser storage. */ }
+    });
+    client.auth.getSession().then(({ data, error }) => {
+      if (error || !data.session) return;
+      try {
+        if (!localStorage.getItem(SESSION_KEY)) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify({ access_token:data.session.access_token, refresh_token:data.session.refresh_token, event:Date.now() }));
+        }
+      } catch (_error) { /* The in-tab Supabase session continues to work without browser storage. */ }
+    });
+    window.addEventListener("storage", async (event) => {
+      if (event.key !== SESSION_KEY) return;
+      let currentSession = null;
+      try { currentSession = (await client.auth.getSession()).data.session; } catch (_error) {}
+      if (!event.newValue) {
+        if (currentSession) await client.auth.signOut({ scope:"local" });
+        return;
+      }
+      try {
+        const shared = JSON.parse(event.newValue);
+        if (shared.access_token && shared.refresh_token && shared.access_token !== currentSession?.access_token) {
+          await client.auth.setSession({ access_token:shared.access_token, refresh_token:shared.refresh_token });
+        }
+      } catch (_error) { /* Ignore malformed or expired shared session data. */ }
+    });
+    window.addEventListener("beforeunload", () => listener.subscription.unsubscribe(), { once:true });
+    return client;
+  };
 
   window.installAdminSessionTimeout = function installAdminSessionTimeout(supabaseClient) {
     let sessionActive = false;
@@ -32,13 +81,18 @@
       lastActivityWrite = timestamp;
     }
 
+    function writeSharedActivity(timestamp = Date.now()) {
+      writeLastActivity(timestamp);
+      try { localStorage.setItem(ACTIVITY_KEY, String(timestamp)); } catch (_error) {}
+    }
+
     function scheduleTimeout() {
       window.clearTimeout(timerId);
       if (!sessionActive || signingOut) return;
 
       const lastActivity = readLastActivity();
       if (!lastActivity) {
-        writeLastActivity();
+        writeSharedActivity();
         return scheduleTimeout();
       }
 
@@ -95,7 +149,7 @@
     function recordActivity() {
       if (!sessionActive || document.visibilityState === "hidden") return;
       const now = Date.now();
-      if (now - lastActivityWrite >= 5000) writeLastActivity(now);
+      if (now - lastActivityWrite >= 5000) writeSharedActivity(now);
       scheduleTimeout();
     }
 
@@ -127,9 +181,9 @@
         } catch (_error) {
           // Ignore unavailable browser storage.
         }
-        writeLastActivity();
+        writeSharedActivity();
       } else if (!readLastActivity()) {
-        writeLastActivity();
+        writeSharedActivity();
       }
       scheduleTimeout();
     });

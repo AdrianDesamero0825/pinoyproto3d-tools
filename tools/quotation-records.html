@@ -12,8 +12,8 @@
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 85% 4%,rgba(255,114,0,.13),transparent 28rem),var(--color-page); font:14px/1.45 var(--font-ui); }
     .app { display:grid; grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); min-height:100vh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
-    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    nav { position:fixed; top:0; left:0; z-index:10; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
+    .brand { margin:0 8px 8px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     .nav-scroll-hint { display:none; }
     .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
     .back:hover,.back:focus-visible { color:var(--orange); outline:none; }
@@ -91,6 +91,8 @@
       .edit-form { grid-template-columns:1fr; }
       .pagination { flex-wrap:wrap; }
     }
+    @media (min-width: 701px) { .app { grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); } .app > nav { grid-column:1; width:var(--layout-sidebar-width); } .app > main { grid-column:2; } .brand-subtitle { margin:0 8px 8px; color:var(--muted); font-size:12px; } }
+    @media (max-width: 700px) { .brand-subtitle { display:none; } }
   </style>
   <link rel="stylesheet" href="../assets/css/design-system.css">
 </head>
@@ -98,16 +100,16 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <p class="brand-subtitle">Production tools</p>
       <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
-      <a class="back" href="../index.html">← Return to home</a>
+      <a class="back" href="../index.html">&larr; Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
       <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
       <p class="nav-label">Tools</p>
-      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="customer-feedback.html">Feedback Renderer</a>
       <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="price-estimator.html">Price Estimator</a>
-      <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
+      <a class="tool-link" href="new-tool.html">Layout Builder</a>
       <a class="tool-link active saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
@@ -122,15 +124,9 @@
       <div class="toolbar">
         <input id="searchInput" type="search" placeholder="Search project, customer, or quotation number" aria-label="Search saved quotations">
       </div>
-      <section class="admin-panel" aria-label="Admin login">
+      <section class="admin-panel" aria-label="Admin session">
         <h2>Admin access</h2>
-        <p class="admin-timeout-note">Automatically signs out after 15 minutes without activity.</p>
-        <form id="loginForm">
-          <input id="emailInput" type="email" placeholder="Admin email" aria-label="Admin email" autocomplete="username" required>
-          <input id="passwordInput" type="password" placeholder="Password" aria-label="Admin password" autocomplete="current-password" required>
-          <button class="admin-button" type="submit">Log in</button>
-        </form>
-        <span class="admin-user" id="adminUser" hidden></span>
+        <p class="admin-timeout-note" id="adminSessionLabel">Checking shared admin session…</p>
         <button class="admin-button secondary" id="logoutButton" type="button" hidden>Log out</button>
         <button class="admin-button danger" id="clearAllButton" type="button" hidden>Clear all quotations</button>
       </section>
@@ -152,7 +148,7 @@
   <script src="../assets/js/admin-session-timeout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const supabaseClient = window.supabase.createClient("https://cifxwhhdkmecgomwesnk.supabase.co", "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo");
+    const supabaseClient = window.createAdminSupabaseClient();
     window.installAdminSessionTimeout(supabaseClient);
     const recordsElement = document.getElementById("records");
     const recordsPagination = document.getElementById("recordsPagination");
@@ -165,10 +161,7 @@
       statusElement.className = "status";
     });
     const searchInput = document.getElementById("searchInput");
-    const loginForm = document.getElementById("loginForm");
-    const emailInput = document.getElementById("emailInput");
-    const passwordInput = document.getElementById("passwordInput");
-    const adminUser = document.getElementById("adminUser");
+    const adminSessionLabel = document.getElementById("adminSessionLabel");
     const logoutButton = document.getElementById("logoutButton");
     const clearAllButton = document.getElementById("clearAllButton");
     const savedView = document.getElementById("savedView");
@@ -214,11 +207,9 @@
     function setAdminState(nextSession) {
       session = nextSession;
       const loggedIn = Boolean(session);
-      loginForm.hidden = loggedIn;
-      adminUser.hidden = !loggedIn;
       logoutButton.hidden = !loggedIn;
       clearAllButton.hidden = !loggedIn;
-      adminUser.textContent = loggedIn ? `Logged in as ${session.user.email}` : "";
+      adminSessionLabel.textContent = loggedIn ? `Signed in as ${session.user.email}. Manage this shared session from the homepage.` : "Sign in from the homepage to enable admin features across the website.";
       renderRecords();
       renderTransactions();
     }
@@ -528,18 +519,6 @@
     });
     savedTab.addEventListener("click", () => setView("saved"));
     transactionsTab.addEventListener("click", () => setView("transactions"));
-    loginForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value.trim(), password: passwordInput.value });
-      if (error) {
-        statusElement.textContent = `Login failed: ${error.message}`;
-        statusElement.className = "status error";
-        return;
-      }
-      passwordInput.value = "";
-      setAdminState(data.session);
-      statusElement.className = "status";
-    });
     logoutButton.addEventListener("click", async () => {
       const { error } = await supabaseClient.auth.signOut();
       if (error) {

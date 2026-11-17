@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Open the PinoyProto 3D Bambu Studio remote desktop from a phone, tablet, or computer browser.">
+  <title>PinoyProto 3D - Bambu Studio</title>
+  <link rel="stylesheet" href="../assets/css/design-system.css">
+  <style>
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 85% 4%,rgba(242,123,36,.12),transparent 28rem),var(--color-page); font:14px/1.5 var(--font-ui); }
+    .studio-app { min-height:100vh; }
+    .studio-nav { position:fixed; inset:0 auto 0 0; z-index:10; display:flex; width:var(--layout-sidebar-width); height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--color-border); background:var(--color-navigation); }
+    .studio-brand { margin:0 8px 8px; color:var(--color-accent); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .nav-scroll-hint { display:none; }
+    .studio-back { margin:0 8px 24px; color:var(--color-muted); font-size:13px; font-weight:700; text-decoration:none; }
+    .studio-subtitle { margin:0 8px 8px; color:var(--color-muted); font-size:12px; }
+    .studio-label { margin:18px 8px 7px; color:var(--color-muted); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .studio-back + .studio-label { margin-top:0; }
+    .tool-link { display:block; margin:0 2px; padding:11px 12px; border:1px solid transparent; border-radius:10px; color:var(--color-text); text-decoration:none; line-height:1.35; }
+    .tool-link:hover,.tool-link:focus-visible,.tool-link[aria-current="page"] { border-color:rgba(242,123,36,.36); color:var(--color-text-strong); background:var(--color-accent-soft); outline:none; transform:translateX(2px); }
+    .saved-link { margin-top:auto; padding-top:18px; border-top:1px solid var(--color-border); }
+    .studio-main { width:min(calc(100% - var(--layout-sidebar-width)),var(--layout-content-wide)); min-width:0; margin:0 auto 0 max(var(--layout-sidebar-width),calc((100vw - var(--layout-content-wide) + var(--layout-sidebar-width))/2)); padding:clamp(24px,5vw,58px); }
+    h1 { margin:0 0 10px; font-size:clamp(32px,5vw,48px); line-height:1.05; letter-spacing:-.045em; }
+    .intro { max-width:720px; margin:0 0 26px; color:var(--color-muted); }
+    .studio-panel { margin:22px 0; padding:var(--space-panel-padding); border:1px solid var(--color-border); border-radius:var(--radius-panel); background:var(--color-panel); box-shadow:var(--shadow-panel); }
+    .studio-panel h2 { margin:0 0 12px; font-size:20px; }
+    .address-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
+    .address-row label { display:grid; gap:7px; color:var(--color-muted); font-size:12px; font-weight:700; }
+    .address-row input { width:100%; min-height:44px; padding:10px 12px; color:var(--color-text); background:var(--color-control-bg); border:1px solid var(--color-control-border); border-radius:var(--radius-control); font:inherit; }
+    .address-row input:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+    .primary-button { min-height:44px; padding:10px 16px; border:1px solid var(--color-accent); border-radius:var(--radius-control); color:#171717; background:var(--color-accent); font:inherit; font-weight:800; cursor:pointer; }
+    .primary-button:hover { filter:brightness(1.08); }
+    .primary-button:focus-visible { outline:2px solid var(--color-text-strong); outline-offset:2px; }
+    .hint,.security-note { color:var(--color-muted); font-size:13px; }
+    .status { min-height:1.5em; margin:12px 0 0; color:#ffc58f; font-size:13px; }
+    .status.success { color:#8bd6ad; }
+    .studio-frame-wrap { overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-panel); background:#080b10; box-shadow:var(--shadow-panel); }
+    .studio-frame { display:block; width:100%; height:min(78vh,1000px); min-height:560px; border:0; background:#080b10; }
+    .frame-help a { color:var(--color-accent); }
+    .steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:22px 0; }
+    .step { padding:16px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-panel); }
+    .step strong { display:block; margin-bottom:6px; color:var(--color-text-strong); }
+    .step p { margin:0; color:var(--color-muted); font-size:13px; }
+    .security-note { padding:14px 16px; border-left:3px solid var(--color-accent); background:var(--color-accent-soft); }
+    @media(max-width:700px) {
+      .studio-app { display:block; }
+      .studio-nav { position:static; display:flex; width:100%; height:auto; min-height:0; flex-direction:row; align-items:center; gap:8px; padding:var(--space-nav-mobile-block) var(--space-4); border-right:0; border-bottom:1px solid var(--color-border); overflow-x:auto; }
+      .studio-brand { flex:0 0 auto; margin:0 8px 0 0; }
+      .nav-scroll-hint { display:inline-flex; flex:0 0 auto; align-items:center; padding:5px 8px; border:1px solid rgba(242,123,36,.4); border-radius:var(--radius-pill); color:#ffb37a; background:var(--color-accent-soft); font-size:10px; font-weight:800; white-space:nowrap; }
+      .studio-subtitle { display:none; }
+      .studio-back { flex:0 0 auto; margin:0 8px 0 0; white-space:nowrap; }
+      .studio-label { display:none; }
+      .tool-link { flex:0 0 auto; white-space:nowrap; }
+      .saved-link { margin-top:0; padding-top:11px; border-top:0; }
+      .studio-main { width:min(100%,var(--layout-content-wide)); margin:0 auto; padding:34px 18px 40px; }
+      .steps { grid-template-columns:1fr; }
+      .studio-frame { height:76svh; min-height:420px; }
+    }
+    @media(max-width:520px) { .studio-main { padding:28px 14px 34px; } .address-row { grid-template-columns:1fr; } .primary-button { width:100%; } .studio-frame { height:72svh; min-height:380px; } }
+  </style>
+</head>
+<body>
+  <div class="studio-app">
+    <nav class="studio-nav" aria-label="Tool navigation">
+      <p class="studio-brand">PinoyProto 3D</p>
+      <p class="studio-subtitle">Production tools</p>
+      <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
+      <a class="studio-back" href="../index.html">&larr; Return to home</a>
+      <p class="studio-label">Statistics</p>
+      <a class="tool-link" href="dashboard.html">Dashboard</a>
+      <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
+      <p class="studio-label">Tools</p>
+      <a class="tool-link" href="customer-feedback.html">Feedback Renderer</a>
+      <a class="tool-link" href="quotation-maker.html">Quotation Maker</a>
+      <a class="tool-link" href="bambu-studio.html" aria-current="page">Bambu Studio</a>
+      <a class="tool-link" href="new-tool.html">Layout Builder</a>
+      <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
+      <a class="tool-link" href="transaction-records.html">Transactions Done</a>
+    </nav>
+    <main class="studio-main">
+      <h1>Bambu Studio Anywhere</h1>
+      <p class="intro">Use Bambu Studio right here in your browser. On Android, use Chrome and turn your phone sideways for more workspace.</p>
+      <section class="studio-panel" aria-labelledby="launch-title">
+        <h2 id="launch-title">Connect to your server</h2>
+        <form id="studioForm" class="address-row">
+          <label for="studioAddress">Bambu Studio address
+            <input id="studioAddress" type="url" inputmode="url" autocomplete="url" spellcheck="false" required>
+          </label>
+          <button class="primary-button" type="submit">Load in this page</button>
+        </form>
+        <p class="hint">The address is saved only in this browser. The desktop is embedded below.</p>
+        <p class="status success" id="studioStatus" aria-live="polite">Bambu Studio is configured at https://192.168.1.250:3001/. Connect from a device on your home network.</p>
+      </section>
+      <div class="studio-frame-wrap">
+        <iframe id="studioFrame" class="studio-frame" title="Bambu Studio remote desktop" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
+      </div>
+      <p class="hint frame-help">First time on a device? <a id="certificateLink" href="https://192.168.1.250:3001/" target="_blank" rel="noopener noreferrer">Open the server once to accept its HTTPS certificate</a>, then return here and reload the embedded desktop.</p>
+      <div class="steps" aria-label="Connection steps">
+        <article class="step"><strong>At home</strong><p>Connect your Android device to the same Wi-Fi as Proxmox, then open the saved server address.</p></article>
+        <article class="step"><strong>First connection</strong><p>The container uses HTTPS with a self-signed certificate. Verify the address is your own server before accepting the browser warning.</p></article>
+        <article class="step"><strong>Away from home</strong><p>Use a private VPN such as Tailscale on both the server and Android device. Do not expose this desktop directly to the public internet.</p></article>
+      </div>
+      <p class="security-note">The browser desktop includes a terminal with administrator access inside its container. Keep its login private. The website never stores or sends the desktop password.</p>
+    </main>
+  </div>
+  <script>
+    const studioForm = document.getElementById("studioForm");
+    const studioAddress = document.getElementById("studioAddress");
+    const studioStatus = document.getElementById("studioStatus");
+    const studioFrame = document.getElementById("studioFrame");
+    const certificateLink = document.getElementById("certificateLink");
+    const defaultStudioAddress = "https://192.168.1.250:3001/";
+    studioAddress.value = localStorage.getItem("pinoyproto3d-bambu-studio-address") || defaultStudioAddress;
+    studioFrame.src = studioAddress.value;
+    certificateLink.href = studioAddress.value;
+    studioForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      let address;
+      try { address = new URL(studioAddress.value.trim()); }
+      catch { reportStatus("Enter a valid Bambu Studio HTTPS address."); return; }
+      if (address.protocol !== "https:" || address.username || address.password) {
+        reportStatus("Use an HTTPS address without a username or password.");
+        return;
+      }
+      localStorage.setItem("pinoyproto3d-bambu-studio-address", address.href);
+      certificateLink.href = address.href;
+      studioFrame.src = address.href;
+      reportStatus("Loading the desktop here. Sign in with the separate desktop login configured on your server.", true);
+    });
+    function reportStatus(message, success = false) {
+      studioStatus.textContent = message;
+      studioStatus.classList.toggle("success", success);
+    }
+  </script>
+</body>
+</html>

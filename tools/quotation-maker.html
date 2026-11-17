@@ -13,8 +13,8 @@
     html { min-width:320px; }
     body { margin:0; min-height:100vh; min-height:100dvh; overflow-x:hidden; color:var(--ink); background:radial-gradient(circle at 85% 4%, rgba(255,114,0,.13), transparent 28rem),var(--color-page); font:14px/1.45 var(--font-ui); }
     .app { display:grid; grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); min-height:100vh; min-height:100dvh; }
-    nav { position:sticky; top:0; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
-    .brand { margin:0 8px 28px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    nav { position:fixed; top:0; left:0; z-index:10; display:flex; height:100vh; height:100dvh; min-height:0; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-nav-block) var(--space-4); border-right:1px solid var(--line); background:var(--color-navigation); }
+    .brand { margin:0 8px 8px; color:var(--orange); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     .nav-scroll-hint { display:none; }
     .back { display:inline-block; margin:0 8px 24px; color:var(--muted); font-size:13px; font-weight:700; text-decoration:none; }
     .back:hover,.back:focus-visible { color:var(--orange); outline:none; }
@@ -106,8 +106,8 @@
     .paper-footer { flex-shrink:0; padding:8px 12px; color:#fff; background:var(--dark); text-align:center; }
     .paper-footer strong { display:block; font-size:16px; font-weight:900; }
     .business-info { margin-top:3px; font-size:8px; font-weight:500; }
-    @media (max-width:1100px) { .app{grid-template-columns:var(--layout-sidebar-compact) minmax(0,1fr)} main{grid-template-columns:minmax(270px,32%) minmax(0,1fr)} }
-    @media (max-width:900px) { .app{grid-template-columns:var(--layout-sidebar-compact) minmax(0,1fr)} main{grid-template-columns:1fr;padding:22px}.preview-wrap{position:static;max-width:760px}.controls{max-height:none}.paper{margin-inline:auto} }
+    @media (max-width:1100px) { main{grid-template-columns:minmax(270px,32%) minmax(0,1fr)} }
+    @media (max-width:900px) { main{grid-template-columns:1fr;padding:22px}.preview-wrap{position:static;max-width:760px}.controls{max-height:none}.paper{margin-inline:auto} }
     @media (max-width:700px) {
       .app{display:block}
       .app nav{position:static;display:flex;height:auto;min-height:0;align-items:center;gap:8px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:var(--space-nav-mobile-block) var(--space-3)}
@@ -148,6 +148,8 @@
       .quote-table{font-size:6px}
       .paper-footer strong{font-size:8px}
     }
+    @media (min-width: 701px) { .app { grid-template-columns:var(--layout-sidebar-width) minmax(0,1fr); } .app > nav { grid-column:1; width:var(--layout-sidebar-width); } .app > main { grid-column:2; } .brand-subtitle { margin:0 8px 8px; color:var(--muted); font-size:12px; } }
+    @media (max-width: 700px) { .brand-subtitle { display:none; } }
   </style>
   <link rel="stylesheet" href="../assets/css/design-system.css">
 </head>
@@ -155,16 +157,16 @@
   <div class="app">
     <nav aria-label="Tool navigation">
       <p class="brand">PinoyProto 3D</p>
+      <p class="brand-subtitle">Production tools</p>
       <span class="nav-scroll-hint" aria-hidden="true">Swipe for more &rarr;</span>
-      <a class="back" href="../index.html">← Return to home</a>
+      <a class="back" href="../index.html">&larr; Return to home</a>
       <p class="nav-label">Statistics</p>
       <a class="tool-link" href="dashboard.html">Dashboard</a>
       <a class="tool-link" href="customer-tracker.html">Customer Tracker</a>
       <p class="nav-label">Tools</p>
-      <a class="tool-link" href="customer-feedback.html">Customer Feedback Renderer</a>
+      <a class="tool-link" href="customer-feedback.html">Feedback Renderer</a>
       <a class="tool-link active" href="quotation-maker.html">Quotation Maker</a>
-      <a class="tool-link" href="price-estimator.html">Price Estimator</a>
-      <a class="tool-link" href="new-tool.html">Carousel and Layout Builder</a>
+      <a class="tool-link" href="new-tool.html">Layout Builder</a>
       <a class="tool-link saved-link" href="quotation-records.html">Saved Quotations</a>
       <a class="tool-link" href="transaction-records.html">Transactions Done</a>
     </nav>
@@ -211,6 +213,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
     const fields = {};
     document.querySelectorAll("[data-field]").forEach((input) => { fields[input.dataset.field] = input; input.addEventListener("input", render); });
@@ -314,9 +317,7 @@
     const addRecordButton = document.getElementById("addRecordButton");
     const A4_EXPORT_WIDTH = 794;
     const A4_EXPORT_HEIGHT = 1123;
-    const SUPABASE_URL = "https://cifxwhhdkmecgomwesnk.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_4-at96mA3nKEH6t2irolAg_20waHMZo";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    const supabaseClient = window.createAdminSupabaseClient();
     let trackerSuggestions = [];
     const customerNameSuggestions = document.getElementById("customerNameSuggestions");
     const projectNameSuggestions = document.getElementById("projectNameSuggestions");

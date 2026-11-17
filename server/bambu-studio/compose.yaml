@@ -1,0 +1,18 @@
+services:
+  bambu-studio:
+    image: lscr.io/linuxserver/bambustudio:latest
+    container_name: bambu-studio
+    environment:
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: Asia/Manila
+      DARK_MODE: "true"
+      CUSTOM_USER: "${BAMBU_STUDIO_USER:?Set BAMBU_STUDIO_USER in .env}"
+      PASSWORD: "${BAMBU_STUDIO_PASSWORD:?Set BAMBU_STUDIO_PASSWORD in .env}"
+      SELKIES_FRAME_ANCESTORS: "https://adriandesamero0825.github.io,http://localhost:*,http://127.0.0.1:*"
+    volumes:
+      - ./config:/config
+    ports:
+      - "3001:3001"
+    shm_size: "1gb"
+    restart: unless-stopped
