@@ -1,0 +1,15 @@
+---
+description: Keep the production tools workspace sidebar stable and shared
+globs: index.html, assets/js/app-shell.js, tools/**/*.html
+alwaysApply: false
+---
+
+# Shared workspace shell
+
+- `index.html` owns the workspace shell, homepage, and the single persistent sidebar. Keep sidebar sizing, spacing, and responsive behavior here.
+- `assets/js/app-shell.js` owns tool route registration and tab switching. Tool pages open in the right-side frame; do not make tab clicks replace or rebuild the shell.
+- When adding a tool tab, register its stable key and page path in `app-shell.js`, then add its sidebar link in `index.html` using the same `data-tool` key. Keep the homepage card in sync when the tool is also featured there.
+- Keep each `tools/*.html` page independently usable. Its own navigation may remain as a standalone fallback, but it must not alter the shared shell when displayed in the workspace frame.
+- Preserve the stable sidebar across tool changes. Fix page sizing in the frame overrides in `app-shell.js` or in the page itself; do not add route-specific sidebar markup/styles to `index.html`.
+- Preserve keyboard focus, active-tab indication, direct page links, and responsive behavior when changing navigation.
+- Check both Home scrolling and switching among short, long, and narrow tool pages after layout changes.

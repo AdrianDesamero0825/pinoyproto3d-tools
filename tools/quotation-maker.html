@@ -318,6 +318,7 @@
     const A4_EXPORT_WIDTH = 794;
     const A4_EXPORT_HEIGHT = 1123;
     const supabaseClient = window.createAdminSupabaseClient();
+    window.installAdminSessionTimeout(supabaseClient);
     let trackerSuggestions = [];
     const customerNameSuggestions = document.getElementById("customerNameSuggestions");
     const projectNameSuggestions = document.getElementById("projectNameSuggestions");

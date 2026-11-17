@@ -131,6 +131,7 @@
   <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
     const supabaseClient = window.createAdminSupabaseClient();
+    window.installAdminSessionTimeout(supabaseClient);
     const statusElement = document.getElementById("status");
     const money = (value) => Number(value || 0).toLocaleString("en-PH", { style:"currency", currency:"PHP" });
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));

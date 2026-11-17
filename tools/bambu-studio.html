@@ -24,6 +24,12 @@
     .intro { max-width:720px; margin:0 0 26px; color:var(--color-muted); }
     .studio-panel { margin:22px 0; padding:var(--space-panel-padding); border:1px solid var(--color-border); border-radius:var(--radius-panel); background:var(--color-panel); box-shadow:var(--shadow-panel); }
     .studio-panel h2 { margin:0 0 12px; font-size:20px; }
+    .power-controls { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:10px; align-items:end; }
+    .power-controls label { display:grid; gap:7px; color:var(--color-muted); font-size:12px; font-weight:700; }
+    .power-controls input { width:100%; min-height:44px; padding:10px 12px; color:var(--color-text); background:var(--color-control-bg); border:1px solid var(--color-control-border); border-radius:var(--radius-control); font:inherit; }
+    .power-button { min-height:44px; padding:10px 16px; border:1px solid var(--color-control-border); border-radius:var(--radius-control); color:var(--color-text-strong); background:var(--color-control-bg); font:inherit; font-weight:800; cursor:pointer; }
+    .power-button.start { border-color:var(--color-accent); color:#171717; background:var(--color-accent); }
+    .power-button:disabled { opacity:.55; cursor:wait; }
     .address-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
     .address-row label { display:grid; gap:7px; color:var(--color-muted); font-size:12px; font-weight:700; }
     .address-row input { width:100%; min-height:44px; padding:10px 12px; color:var(--color-text); background:var(--color-control-bg); border:1px solid var(--color-control-border); border-radius:var(--radius-control); font:inherit; }
@@ -56,7 +62,7 @@
       .steps { grid-template-columns:1fr; }
       .studio-frame { height:76svh; min-height:420px; }
     }
-    @media(max-width:520px) { .studio-main { padding:28px 14px 34px; } .address-row { grid-template-columns:1fr; } .primary-button { width:100%; } .studio-frame { height:72svh; min-height:380px; } }
+    @media(max-width:520px) { .studio-main { padding:28px 14px 34px; } .address-row,.power-controls { grid-template-columns:1fr; } .primary-button,.power-button { width:100%; } .studio-frame { height:72svh; min-height:380px; } }
   </style>
 </head>
 <body>
@@ -89,30 +95,149 @@
           <button class="primary-button" type="submit">Load in this page</button>
         </form>
         <p class="hint">The address is saved only in this browser. The desktop is embedded below.</p>
-        <p class="status success" id="studioStatus" aria-live="polite">Bambu Studio is configured at https://192.168.1.250:3001/. Connect from a device on your home network.</p>
+        <p class="status success" id="studioStatus" aria-live="polite">Bambu Studio is available at studio.pinoyproto3d.stream. Sign in through Cloudflare Access to connect from any network.</p>
+      </section>
+      <section class="studio-panel" aria-labelledby="power-title">
+        <h2 id="power-title">Server power</h2>
+        <div id="controlForm" class="power-controls">
+          <label for="controlAddress">Private control service address
+            <input id="controlAddress" type="url" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://studio-control.example.com" required>
+          </label>
+          <button class="power-button start" id="startStudio" type="button" disabled>Start server</button>
+          <button class="power-button" id="stopStudio" type="button" disabled>Stop server</button>
+        </div>
+        <p class="hint">Only the Bambu Studio container can be started or stopped. Sign in to the website admin account first.</p>
+        <p class="status" id="powerStatus" aria-live="polite">Control service not configured.</p>
       </section>
       <div class="studio-frame-wrap">
         <iframe id="studioFrame" class="studio-frame" title="Bambu Studio remote desktop" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
       </div>
-      <p class="hint frame-help">First time on a device? <a id="certificateLink" href="https://192.168.1.250:3001/" target="_blank" rel="noopener noreferrer">Open the server once to accept its HTTPS certificate</a>, then return here and reload the embedded desktop.</p>
+      <p class="hint frame-help">If the Cloudflare sign-in does not open inside the page, <a id="certificateLink" href="https://studio.pinoyproto3d.stream/" target="_blank" rel="noopener noreferrer">open Bambu Studio in a new tab and sign in</a>, then return here and reload the embedded desktop.</p>
       <div class="steps" aria-label="Connection steps">
-        <article class="step"><strong>At home</strong><p>Connect your Android device to the same Wi-Fi as Proxmox, then open the saved server address.</p></article>
-        <article class="step"><strong>First connection</strong><p>The container uses HTTPS with a self-signed certificate. Verify the address is your own server before accepting the browser warning.</p></article>
-        <article class="step"><strong>Away from home</strong><p>Use a private VPN such as Tailscale on both the server and Android device. Do not expose this desktop directly to the public internet.</p></article>
+        <article class="step"><strong>Open from anywhere</strong><p>Use the secure studio.pinoyproto3d.stream address from your home Wi-Fi or another network.</p></article>
+        <article class="step"><strong>Cloudflare sign-in</strong><p>Enter the email PIN for an address allowed by the Bambu Studio Access policy.</p></article>
+        <article class="step"><strong>Desktop sign-in</strong><p>After Access, sign in with the separate Bambu Studio desktop credentials configured on the server.</p></article>
       </div>
       <p class="security-note">The browser desktop includes a terminal with administrator access inside its container. Keep its login private. The website never stores or sends the desktop password.</p>
     </main>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/admin-session-timeout.js"></script>
   <script>
     const studioForm = document.getElementById("studioForm");
     const studioAddress = document.getElementById("studioAddress");
     const studioStatus = document.getElementById("studioStatus");
     const studioFrame = document.getElementById("studioFrame");
     const certificateLink = document.getElementById("certificateLink");
-    const defaultStudioAddress = "https://192.168.1.250:3001/";
-    studioAddress.value = localStorage.getItem("pinoyproto3d-bambu-studio-address") || defaultStudioAddress;
+    const controlAddress = document.getElementById("controlAddress");
+    const powerStatus = document.getElementById("powerStatus");
+    const startButton = document.getElementById("startStudio");
+    const stopButton = document.getElementById("stopStudio");
+    const supabaseClient = window.createAdminSupabaseClient();
+    window.installAdminSessionTimeout(supabaseClient);
+    const defaultStudioAddress = "https://studio.pinoyproto3d.stream/";
+    const studioAddressStorageKey = "pinoyproto3d-bambu-studio-address";
+    const savedStudioAddress = localStorage.getItem(studioAddressStorageKey);
+    if (savedStudioAddress === "https://192.168.1.250:3001/") {
+      localStorage.setItem(studioAddressStorageKey, defaultStudioAddress);
+    }
+    studioAddress.value = localStorage.getItem(studioAddressStorageKey) || defaultStudioAddress;
     studioFrame.src = studioAddress.value;
     certificateLink.href = studioAddress.value;
+    controlAddress.value = localStorage.getItem("pinoyproto3d-bambu-control-address") || "";
+    let isAdmin = false;
+
+    function updatePowerControls() {
+      const configured = Boolean(controlAddress.value.trim());
+      startButton.disabled = !configured || !isAdmin;
+      stopButton.disabled = !configured || !isAdmin;
+      if (!isAdmin) powerStatus.textContent = "Sign in to website admin access to control this server.";
+      else if (!configured) powerStatus.textContent = "Enter the control service address. Server control must also be installed on the server.";
+    }
+
+    controlAddress.addEventListener("change", () => {
+      const value = controlAddress.value.trim();
+      if (!value) {
+        localStorage.removeItem("pinoyproto3d-bambu-control-address");
+        updatePowerControls();
+        return;
+      }
+      try {
+        const address = new URL(value);
+        const secureAddress = address.protocol === "https:" || (address.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(address.hostname));
+        if (!secureAddress || address.username || address.password) throw new Error();
+        address.pathname = address.pathname.replace(/\/$/, "");
+        localStorage.setItem("pinoyproto3d-bambu-control-address", address.href.replace(/\/$/, ""));
+        controlAddress.value = address.href.replace(/\/$/, "");
+        updatePowerControls();
+      } catch {
+        powerStatus.textContent = "Use a valid HTTPS control-service address (HTTP is allowed only on localhost).";
+      }
+    });
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      isAdmin = Boolean(session);
+      updatePowerControls();
+      if (session && controlAddress.value.trim()) refreshPowerStatus();
+    });
+
+    async function controlRequest(action) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) throw new Error("Sign in to website admin access first.");
+      const base = controlAddress.value.trim().replace(/\/$/, "");
+      if (!base) throw new Error("Enter the control service address first.");
+      const response = await fetch(`${base}/api/bambu/${action}`, {
+        method: action === "status" ? "GET" : "POST",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || `Control service returned ${response.status}.`);
+      return result;
+    }
+
+    async function refreshPowerStatus() {
+      if (!isAdmin || !controlAddress.value.trim()) return;
+      powerStatus.textContent = "Checking server status…";
+      try {
+        const result = await controlRequest("status");
+        powerStatus.textContent = result.running ? "Bambu Studio server is running." : "Bambu Studio server is stopped.";
+        powerStatus.classList.toggle("success", true);
+      } catch (error) {
+        powerStatus.textContent = error.message;
+        powerStatus.classList.remove("success");
+      }
+    }
+
+    async function setPower(action) {
+      if (action === "stop" && !window.confirm("Stop the Bambu Studio server? Save your work first; the remote desktop session will close.")) return;
+      startButton.disabled = true;
+      stopButton.disabled = true;
+      powerStatus.classList.remove("success");
+      powerStatus.textContent = action === "start" ? "Starting Bambu Studio…" : "Stopping Bambu Studio…";
+      try {
+        await controlRequest(action);
+        await refreshPowerStatus();
+        if (action === "start") {
+          const address = new URL(studioAddress.value);
+          studioFrame.src = address.href;
+        } else {
+          studioFrame.removeAttribute("src");
+        }
+      } catch (error) {
+        powerStatus.textContent = error.message;
+      } finally {
+        updatePowerControls();
+      }
+    }
+    startButton.addEventListener("click", () => setPower("start"));
+    stopButton.addEventListener("click", () => setPower("stop"));
+    updatePowerControls();
+    supabaseClient.auth.getSession().then(({ data }) => {
+      isAdmin = Boolean(data.session);
+      updatePowerControls();
+      refreshPowerStatus();
+    });
     studioForm.addEventListener("submit", (event) => {
       event.preventDefault();
       let address;
