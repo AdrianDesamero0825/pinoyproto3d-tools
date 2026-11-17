@@ -1,0 +1,17 @@
+---
+description: Preserve PinoyProto 3D system boundaries and security model
+alwaysApply: true
+---
+
+# PinoyProto 3D system context
+
+Read `docs/SYSTEM_OVERVIEW.md` before substantial work involving the site, Supabase, Cloudflare, Proxmox, Bambu Studio, or the OrcaSlicer API.
+If `docs/private/SYSTEM_AUDIT.md` exists in the local checkout, read it before changing security or server behavior. It is git-ignored and must remain local.
+
+- Keep work local until the user asks to publish or deploy it.
+- Never expose service-role keys, tunnel tokens, passwords, or other credentials in client code or public output.
+- Keep Pages artifacts limited to the intended website (`index.html`, `assets/`, `tools/`); exclude `server/`, `supabase/`, `docs/`, `.cursor/`, and agent/diagnostic files.
+- Do not loosen the Supabase RLS / team-role model. Inspect the live policies, grants, and Supabase advisors before changing access rules; policy names alone do not prove that they are restrictive.
+- The Bambu control API requires a valid Supabase bearer session plus its server-side admin allowlist. The command wrapper may control only the `bambu-studio` Docker container.
+- The 15-minute disconnected-session watchdog stops the Bambu Studio Docker container only; Proxmox and LXC 101 stay running.
+- Distinguish live observations from repository configuration, prior conversation reports, and unverified host state.

@@ -206,9 +206,17 @@
     }
     async function ensureProject(customerName, projectName) {
       if (!fullModelAvailable) return null;
+      const { data: existingProject, error: existingError } = await supabaseClient
+        .from("projects")
+        .select("id")
+        .eq("customer_key", normalizeMatch(customerName))
+        .eq("project_key", normalizeMatch(projectName))
+        .maybeSingle();
+      if (existingError) throw new Error(`Could not find project identity: ${existingError.message}`);
+      if (existingProject) return existingProject.id;
       const { data, error } = await supabaseClient
         .from("projects")
-        .upsert({ customer_name:customerName, project_name:projectName }, { onConflict:"customer_key,project_key" })
+        .insert({ customer_name:customerName, project_name:projectName })
         .select("id")
         .single();
       if (error) throw new Error(`Could not save project identity: ${error.message}`);

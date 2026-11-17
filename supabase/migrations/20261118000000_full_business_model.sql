@@ -22,7 +22,9 @@ alter table public.quotations
   add column if not exists supersedes_id uuid;
 
 alter table public.customer_trackers
-  add column if not exists project_id uuid;
+  add column if not exists project_id uuid,
+  add column if not exists customer_key text generated always as (lower(regexp_replace(trim(customer_name), '\s+', ' ', 'g'))) stored,
+  add column if not exists project_key text generated always as (lower(regexp_replace(trim(project_name), '\s+', ' ', 'g'))) stored;
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),

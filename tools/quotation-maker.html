@@ -526,6 +526,25 @@
       return { ...linkedTracker, created: !tracker, quotedAmount };
     }
 
+    async function syncQuotationWorkflow(quotationId, customerName, projectName, quotedAmount, supersedesId) {
+      const { data, error } = await supabaseClient.rpc("sync_quotation_workflow", {
+        p_quotation_id:quotationId,
+        p_customer_name:customerName,
+        p_project_name:projectName,
+        p_quoted_amount:quotedAmount,
+        p_supersedes_id:supersedesId || null
+      });
+      if (error) throw new Error(`Could not synchronize quotation workflow: ${error.message}`);
+      return data;
+    }
+
+    async function assertQuotationWriteAccess() {
+      if (!fullModelAvailable) return;
+      const { data, error } = await supabaseClient.rpc("is_business_operator");
+      if (error) throw new Error(`Could not verify quotation access: ${error.message}`);
+      if (!data) throw new Error("Sign in with an active business operator account before saving a quotation.");
+    }
+
     async function getNextQuotationNumber(year = new Date().getFullYear()) {
       const { data, error } = await supabaseClient
         .from("quotations")
@@ -552,6 +571,7 @@
 
     async function collectRecord() {
       if (!fullModelChecked) await detectFullModel();
+      await assertQuotationWriteAccess();
       const projectName = value("projectName").trim();
       if (!projectName) throw new Error("Enter a project name before adding a record.");
       const customerName = value("customerName").trim();
@@ -630,15 +650,27 @@
         .select("id")
         .single();
       if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
-      const linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name, quotedAmount);
-      const projectRecord = await syncFullModel(
-        savedQuotation.id,
-        linkedTracker.id,
-        record.customer_name,
-        record.project_name,
-        quotedAmount,
-        supersedesId
-      );
+      let linkedTracker;
+      let projectRecord = null;
+      if (fullModelAvailable) {
+        const syncResult = await syncQuotationWorkflow(
+          savedQuotation.id,
+          record.customer_name,
+          record.project_name,
+          quotedAmount,
+          supersedesId
+        );
+        linkedTracker = {
+          id:syncResult.tracker_id,
+          project_name:record.project_name,
+          stage:syncResult.stage,
+          quotedAmount,
+          created:syncResult.tracker_created
+        };
+        projectRecord = { revisionNumber:syncResult.revision_number };
+      } else {
+        linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name, quotedAmount);
+      }
       fields.quoteNo.value = record.quotation_number;
       render();
       const trackerAction = linkedTracker.created ? "created" : "updated";

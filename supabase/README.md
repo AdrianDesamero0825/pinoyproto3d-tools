@@ -28,6 +28,12 @@ Existing authenticated users are seeded as owners during this transition. Review
 
 Apply `migrations/20261118020000_admin_only_updates.sql` after the enterprise-hardening migration. Operators can still create quotations, trackers, projects, and payment entries, but only owners and admins can update existing quotations, trackers, or projects. The customer tracker also hides edit/update/delete controls for non-admin users.
 
+Apply `migrations/20261118030000_quotation_sync_rpc.sql` afterward. The quotation maker uses this controlled function to create or link the project and tracker and save quotation revisions. This automatic workflow synchronization is permitted for operators; manual record updates remain admin-only.
+
+Apply `migrations/20261118040000_tracker_keys.sql` and `migrations/20261118050000_payment_idempotency.sql` after the workflow RPC. They add the tracker business-key columns required by synchronization and a PostgREST-compatible unique payment key required for idempotent payment upserts.
+
+Apply `migrations/20261118060000_remove_legacy_public_policies.sql` after the payment migration. It removes legacy anonymous quotation and tracker policies that would otherwise combine with the enterprise policies through PostgreSQL's permissive OR behavior. After this migration, unauthenticated users cannot read or create business records.
+
 The migration is designed to preserve existing records. Review the generated project list before deleting or merging any duplicates.
 
 ```powershell
