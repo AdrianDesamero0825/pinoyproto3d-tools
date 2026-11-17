@@ -8,7 +8,7 @@ fi
 
 SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="/opt/pinoyproto-bambu-control"
-for required in main.py requirements.txt pinoyproto-bambu-control pinoyproto-bambu-control.service; do
+for required in main.py requirements.txt pinoyproto-bambu-control pinoyproto-bambu-sessions pinoyproto-bambu-control.service; do
   if [ ! -f "$SOURCE_DIR/$required" ]; then
     echo "Missing $SOURCE_DIR/$required. Copy the complete bambu-control folder first." >&2
     exit 1
@@ -39,7 +39,8 @@ install -d -o root -g root -m 755 "$APP_DIR"
 install -o root -g root -m 644 "$SOURCE_DIR/main.py" "$APP_DIR/main.py"
 install -o root -g root -m 644 "$SOURCE_DIR/requirements.txt" "$APP_DIR/requirements.txt"
 install -o root -g root -m 755 "$SOURCE_DIR/pinoyproto-bambu-control" /usr/local/sbin/pinoyproto-bambu-control
-printf '%s\n' 'bambu-control ALL=(root) NOPASSWD: /usr/local/sbin/pinoyproto-bambu-control status, /usr/local/sbin/pinoyproto-bambu-control watch, /usr/local/sbin/pinoyproto-bambu-control start, /usr/local/sbin/pinoyproto-bambu-control stop' > /etc/sudoers.d/pinoyproto-bambu-control
+install -o root -g root -m 755 "$SOURCE_DIR/pinoyproto-bambu-sessions" /usr/local/sbin/pinoyproto-bambu-sessions
+printf '%s\n' 'bambu-control ALL=(root) NOPASSWD: /usr/local/sbin/pinoyproto-bambu-control status, /usr/local/sbin/pinoyproto-bambu-control watch, /usr/local/sbin/pinoyproto-bambu-control sessions, /usr/local/sbin/pinoyproto-bambu-control start, /usr/local/sbin/pinoyproto-bambu-control stop' > /etc/sudoers.d/pinoyproto-bambu-control
 chown root:root /etc/sudoers.d/pinoyproto-bambu-control
 chmod 440 /etc/sudoers.d/pinoyproto-bambu-control
 visudo -cf /etc/sudoers.d/pinoyproto-bambu-control

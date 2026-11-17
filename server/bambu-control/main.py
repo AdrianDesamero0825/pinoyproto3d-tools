@@ -112,6 +112,17 @@ def status(_user: dict = Depends(require_admin)) -> dict:
         raise HTTPException(status_code=502, detail="Could not read Bambu Studio connection status.") from error
     if not isinstance(details, dict) or not isinstance(details.get("running"), bool):
         raise HTTPException(status_code=502, detail="Docker returned an invalid Bambu Studio status.")
+    try:
+        sessions = json.loads(run_control_command("sessions"))
+        if not isinstance(sessions, list):
+            raise ValueError("Session data was not a list.")
+        details["sessions"] = sessions
+        details["sessions_available"] = True
+        details["active_connections"] = len(sessions)
+    except (HTTPException, ValueError):
+        logger.exception("Could not read the Selkies active session list")
+        details["sessions"] = []
+        details["sessions_available"] = False
     details["status"] = "running" if details["running"] else "stopped"
     return details
 

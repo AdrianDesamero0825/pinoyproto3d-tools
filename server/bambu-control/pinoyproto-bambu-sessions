@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import base64
+import json
+import ssl
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+
+def main() -> int:
+    try:
+        inspected = subprocess.run(
+            ["/usr/bin/docker", "inspect", "--format", "{{json .Config.Env}}", "bambu-studio"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=8,
+        )
+        environment = {}
+        for item in json.loads(inspected.stdout):
+            name, separator, value = item.partition("=")
+            if separator:
+                environment[name] = value
+        username = environment.get("CUSTOM_USER", "")
+        password = environment.get("PASSWORD", "")
+        if not username or not password:
+            raise RuntimeError("Bambu Studio login credentials are not configured in the container.")
+
+        basic = base64.b64encode(f"{username}:{password}".encode()).decode()
+        request = urllib.request.Request(
+            "https://127.0.0.1:3001/api/sessions",
+            headers={"Authorization": f"Basic {basic}", "Accept": "application/json"},
+        )
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(request, timeout=8, context=context) as response:
+            payload = json.loads(response.read())
+
+        sessions = payload.get("sessions", []) if isinstance(payload, dict) else payload
+        if not isinstance(sessions, list):
+            raise RuntimeError("Selkies returned an unexpected session list.")
+
+        clean_sessions = []
+        for session in sessions:
+            if not isinstance(session, dict):
+                continue
+            rtt = session.get("rtt_ms")
+            clean_sessions.append(
+                {
+                    "id": str(session.get("id", ""))[:100],
+                    "transport": str(session.get("transport", "unknown"))[:40],
+                    "role": str(session.get("role", "unknown"))[:40],
+                    "slot": session.get("slot"),
+                    "display": str(session.get("display", "unknown"))[:80],
+                    "connected_at": session.get("connected_at"),
+                    "rtt_ms": rtt if isinstance(rtt, (int, float)) else None,
+                }
+            )
+        print(json.dumps(clean_sessions, separators=(",", ":")))
+        return 0
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError, urllib.error.URLError, RuntimeError) as error:
+        print(f"Could not read active Bambu Studio sessions: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

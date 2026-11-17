@@ -39,6 +39,13 @@
     .connection-detail { min-width:0; padding:10px 12px; border:1px solid var(--color-border); border-radius:12px; background:rgba(255,255,255,.025); }
     .connection-detail span { display:block; color:var(--color-muted); font-size:11px; }
     .connection-detail strong { display:block; margin-top:3px; color:var(--color-text-strong); font-size:13px; overflow-wrap:anywhere; }
+    .session-roster { margin:0 0 16px; }
+    .session-roster h3 { margin:0 0 8px; color:var(--color-text-strong); font-size:14px; }
+    .session-roster-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+    .session-roster-item { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:5px 14px; padding:10px 12px; border:1px solid var(--color-border); border-radius:12px; background:rgba(255,255,255,.025); }
+    .session-roster-item strong { grid-column:1/-1; color:var(--color-text-strong); }
+    .session-roster-item span,.session-roster-empty { color:var(--color-muted); font-size:12px; }
+    .session-roster-empty { margin:0; }
     .primary-button { display:inline-flex; min-height:44px; align-items:center; justify-content:center; padding:10px 16px; border:1px solid var(--color-accent); border-radius:var(--radius-control); color:#171717; background:var(--color-accent); font:inherit; font-weight:800; text-decoration:none; cursor:pointer; }
     .primary-button:hover { filter:brightness(1.08); }
     .primary-button:focus-visible { outline:2px solid var(--color-text-strong); outline-offset:2px; }
@@ -100,6 +107,10 @@
           <div class="connection-detail"><span>Idle stop timer</span><strong id="idleCountdown">Sign in to view</strong></div>
           <div class="connection-detail"><span>Idle countdown began</span><strong id="lastDesktopConnection">Sign in to view</strong></div>
         </div>
+        <section class="session-roster" aria-labelledby="sessionRosterTitle">
+          <h3 id="sessionRosterTitle">Active desktop sessions</h3>
+          <div id="sessionRoster" aria-live="polite"><p class="session-roster-empty">Sign in to view active sessions.</p></div>
+        </section>
         <p class="hint">Open the remote desktop in a separate browser tab. Complete Cloudflare Access sign-in in that tab; the stream will run there.</p>
         <a class="primary-button" id="launchStudio" href="https://studio.pinoyproto3d.stream/" target="_blank" rel="noopener noreferrer">Open Bambu Studio in a new tab</a>
       </section>
@@ -124,6 +135,7 @@
     const studioConnections = document.getElementById("studioConnections");
     const idleCountdown = document.getElementById("idleCountdown");
     const lastDesktopConnection = document.getElementById("lastDesktopConnection");
+    const sessionRoster = document.getElementById("sessionRoster");
     const startStudio = document.getElementById("startStudio");
     const stopStudio = document.getElementById("stopStudio");
     // The protected Studio hostname will route this API path to the local control service.
@@ -136,18 +148,77 @@
     let connectionCount = null;
     let idleStopAt = null;
     let lastDesktopConnectionEpoch = null;
+    let connectionMonitoringAvailable = false;
+    let sessionMonitoringAvailable = false;
+    let activeSessions = [];
+
+    function renderSessionRoster() {
+      sessionRoster.replaceChildren();
+      if (!isAdmin) {
+        sessionRoster.innerHTML = '<p class="session-roster-empty">Sign in to view active sessions.</p>';
+        return;
+      }
+      if (studioState === "unavailable") {
+        sessionRoster.innerHTML = '<p class="session-roster-empty">Session status unavailable.</p>';
+        return;
+      }
+      if (!connectionMonitoringAvailable || !sessionMonitoringAvailable) {
+        sessionRoster.innerHTML = '<p class="session-roster-empty">Update the server control service to show session details.</p>';
+        return;
+      }
+      if (!studioRunning || activeSessions.length === 0) {
+        sessionRoster.innerHTML = `<p class="session-roster-empty">${studioRunning ? "No active desktop sessions." : "Bambu Studio is stopped; no active sessions."}</p>`;
+        return;
+      }
+
+      const list = document.createElement("ul");
+      list.className = "session-roster-list";
+      for (const [index, session] of activeSessions.entries()) {
+        const item = document.createElement("li");
+        item.className = "session-roster-item";
+        const heading = document.createElement("strong");
+        heading.textContent = `${session.role || "Session"} · ${session.transport || "unknown transport"}`;
+        item.append(heading);
+        const connected = document.createElement("span");
+        const connectedDate = session.connected_at ? new Date(session.connected_at) : null;
+        connected.textContent = connectedDate && !Number.isNaN(connectedDate.getTime())
+          ? `Connected since ${connectedDate.toLocaleString()}`
+          : "Connection time unavailable";
+        item.append(connected);
+        const latency = document.createElement("span");
+        latency.textContent = typeof session.rtt_ms === "number" ? `Latency ${Math.round(session.rtt_ms)} ms` : "Latency measuring…";
+        item.append(latency);
+        const display = document.createElement("span");
+        display.textContent = `Display: ${session.display || "unknown"}`;
+        item.append(display);
+        const identifier = document.createElement("span");
+        identifier.textContent = `Session ${String(session.id || index + 1).slice(0, 8)}`;
+        item.append(identifier);
+        list.append(item);
+      }
+      sessionRoster.append(list);
+    }
 
     function renderConnectionDetails() {
       if (!isAdmin) {
         studioConnections.textContent = "Sign in to view";
         idleCountdown.textContent = "Sign in to view";
         lastDesktopConnection.textContent = "Sign in to view";
+        renderSessionRoster();
         return;
       }
       if (studioState === "unavailable") {
         studioConnections.textContent = "Status unavailable";
         idleCountdown.textContent = "Status unavailable";
         lastDesktopConnection.textContent = "Status unavailable";
+        renderSessionRoster();
+        return;
+      }
+      if (!connectionMonitoringAvailable) {
+        studioConnections.textContent = "Server update required";
+        idleCountdown.textContent = "Server update required";
+        lastDesktopConnection.textContent = "Server update required";
+        renderSessionRoster();
         return;
       }
       if (!studioRunning) {
@@ -175,16 +246,34 @@
         : (connectionCount > 0
           ? "Desktop connected"
           : (Number.isFinite(timestamp) && timestamp > 0 ? new Date(timestamp * 1000).toLocaleString() : "Waiting for watchdog"));
+      renderSessionRoster();
     }
 
     function updateConnectionDetails(result) {
+      connectionMonitoringAvailable = typeof result.active_connections === "number"
+        && Object.prototype.hasOwnProperty.call(result, "idle_seconds_remaining")
+        && Object.prototype.hasOwnProperty.call(result, "last_active");
+      if (!connectionMonitoringAvailable) {
+        connectionCount = null;
+        idleStopAt = null;
+        lastDesktopConnectionEpoch = null;
+        renderConnectionDetails();
+        return;
+      }
       studioRunning = Boolean(result.running);
-      connectionCount = Number.isFinite(Number(result.active_connections)) ? Number(result.active_connections) : null;
+      connectionCount = Number.isFinite(result.active_connections) ? result.active_connections : null;
       const remaining = result.idle_seconds_remaining;
       idleStopAt = studioRunning && connectionCount === 0 && remaining !== null && remaining !== undefined && Number.isFinite(Number(remaining))
         ? Date.now() + Math.max(0, Number(remaining)) * 1000
         : null;
       lastDesktopConnectionEpoch = result.last_active;
+      renderConnectionDetails();
+    }
+
+    function updateSessionDetails(result) {
+      sessionMonitoringAvailable = result.sessions_available === true && Array.isArray(result.sessions);
+      activeSessions = sessionMonitoringAvailable ? result.sessions : [];
+      if (sessionMonitoringAvailable) connectionCount = activeSessions.length;
       renderConnectionDetails();
     }
 
@@ -236,11 +325,15 @@
       try {
         const result = await controlRequest("status");
         updateConnectionDetails(result);
+        updateSessionDetails(result);
         setStudioStatus(result.running ? "running" : "stopped", result.running ? "Bambu Studio is running" : "Bambu Studio is stopped");
         powerStatus.textContent = result.running ? "The Bambu Studio app is running." : "The Bambu Studio app is stopped. Proxmox and container 101 are still on.";
         powerStatus.classList.toggle("success", true);
       } catch (error) {
         studioState = "unavailable";
+        connectionMonitoringAvailable = false;
+        sessionMonitoringAvailable = false;
+        activeSessions = [];
         setStudioStatus("unavailable", "Bambu Studio status unavailable");
         renderConnectionDetails();
         powerStatus.textContent = error instanceof TypeError
@@ -262,11 +355,17 @@
         studioRunning = true;
         connectionCount = 0;
         idleStopAt = null;
+        connectionMonitoringAvailable = false;
+        sessionMonitoringAvailable = false;
+        activeSessions = [];
         renderConnectionDetails();
         powerStatus.textContent = "Bambu Studio start requested.";
         window.setTimeout(refreshPowerStatus, 4000);
       } catch (error) {
         setStudioStatus("unavailable", "Could not start Bambu Studio");
+        connectionMonitoringAvailable = false;
+        sessionMonitoringAvailable = false;
+        activeSessions = [];
         renderConnectionDetails();
         powerStatus.textContent = error instanceof TypeError
           ? "The control connection failed. Check that container 101 is running in Proxmox."
@@ -287,11 +386,13 @@
         studioRunning = false;
         connectionCount = 0;
         idleStopAt = null;
+        connectionMonitoringAvailable = false;
         renderConnectionDetails();
         powerStatus.textContent = "Stop requested. Proxmox and container 101 remain running.";
         window.setTimeout(refreshPowerStatus, 4000);
       } catch (error) {
         setStudioStatus("unavailable", "Could not update Bambu Studio status");
+        connectionMonitoringAvailable = false;
         renderConnectionDetails();
         powerStatus.textContent = error instanceof TypeError
           ? "The control connection failed. Check that container 101 is running in Proxmox."

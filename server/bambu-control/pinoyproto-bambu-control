@@ -26,6 +26,9 @@ case "${1-}" in
     printf '{"running":%s,"active_connections":%s,"last_active":%s,"idle_seconds_remaining":%s}\n' \
       "$running" "$connections" "$last_active" "$remaining"
     ;;
+  sessions)
+    /usr/local/sbin/pinoyproto-bambu-sessions
+    ;;
   start)
     running=$(/usr/bin/docker inspect --format '{{.State.Running}}' bambu-studio)
     if [ "$running" = "true" ]; then
@@ -43,7 +46,7 @@ case "${1-}" in
     fi
     ;;
   *)
-    echo "Allowed actions: status, watch, start, stop" >&2
+    echo "Allowed actions: status, watch, sessions, start, stop" >&2
     exit 2
     ;;
 esac

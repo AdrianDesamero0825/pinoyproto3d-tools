@@ -315,7 +315,7 @@
       stage: LEGACY_STAGE_MAP[row.stage] || row.stage,
       date: row.target_date || "",
       notes: row.notes || "",
-      modelFile: row.model_file_url ? { path: row.model_file_path, name: row.model_file_name, url: row.model_file_url } : null,
+      modelFile: row.model_file_path ? { path: row.model_file_path, name: row.model_file_name, url: row.model_file_url } : null,
       quotation: row.quotation || null,
       paidAmount: Number(row.paid_amount || 0),
       quotedAmount: Number(row.quoted_amount || 0),
@@ -371,10 +371,23 @@
         const matchKey = `${normalizeMatch(quotation.customer_name)}|${normalizeMatch(quotation.project_name)}`;
         if (!latestQuotationByMatch.has(matchKey)) latestQuotationByMatch.set(matchKey, quotation);
       });
+      const signedFileUrls = new Map();
+      await Promise.all((data || []).filter((row) => row.model_file_path).map(async (row) => {
+        const { data: signedFile, error: signedFileError } = await supabaseClient.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(row.model_file_path, 3600);
+        if (signedFileError) {
+          statusElement.textContent = `Could not prepare a secure model-file link: ${signedFileError.message}`;
+          statusElement.className = "status error";
+          return;
+        }
+        signedFileUrls.set(row.model_file_path, signedFile.signedUrl);
+      }));
       trackers = (data || []).map((row) => {
         const matchKey = `${normalizeMatch(row.customer_name)}|${normalizeMatch(row.project_name)}`;
         return trackerFromRow({
           ...row,
+          model_file_url: row.model_file_path ? signedFileUrls.get(row.model_file_path) || null : null,
           auditEvents:auditEventsByTracker.get(row.id) || [],
           quotation: latestQuotation.get(row.id) || latestQuotationByMatch.get(matchKey) || null
         });
@@ -386,8 +399,12 @@
       setDriveStatus(`Uploading ${file.name}...`);
       const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(path, file, { cacheControl:"3600", upsert:false, contentType:file.type || "application/octet-stream" });
       if (error) throw new Error(`Could not upload model file: ${error.message}`);
-      const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-      return { path, name:file.name, url:data.publicUrl };
+      const { data, error: signedFileError } = await supabaseClient.storage.from(STORAGE_BUCKET).createSignedUrl(path, 3600);
+      if (signedFileError) {
+        await removeModelFile(path);
+        throw new Error(`Could not create a secure model-file link: ${signedFileError.message}`);
+      }
+      return { path, name:file.name, url:data.signedUrl };
     }
     async function removeModelFile(path) {
       if (!path) return;
@@ -582,7 +599,7 @@
           notes:notesInput.value.trim(),
           model_file_path:modelFile?.path || null,
           model_file_name:modelFile?.name || null,
-          model_file_url:modelFile?.url || null,
+          model_file_url:null,
           updated_at:new Date().toISOString()
         };
         const response = editingId
@@ -594,12 +611,14 @@
         }
         const paymentDelta = paidAmount - Number(previousTracker?.paidAmount || 0);
         if (fullModelAvailable && projectId && paymentDelta > 0) {
-          const { error: paymentError } = await supabaseClient.from("payments").insert({
+          const { error: paymentError } = await supabaseClient.from("payments").upsert({
             project_id: projectId,
             amount: paymentDelta,
             payment_date: new Date().toISOString().slice(0, 10),
+            source_tracker_id: editingId,
+            source_paid_total: paidAmount,
             notes: `Recorded from Customer Tracker at ${stage}.`
-          });
+          }, { onConflict:"source_tracker_id,source_paid_total", ignoreDuplicates:true });
           if (paymentError) throw new Error(`Tracker saved, but payment ledger update failed: ${paymentError.message}`);
         }
         if (uploadedFile && editingModelFile?.path) await removeModelFile(editingModelFile.path);

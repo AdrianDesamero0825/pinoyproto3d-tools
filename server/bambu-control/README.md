@@ -1,6 +1,6 @@
 # Bambu Studio status, power control, and idle shutdown
 
-The Bambu Studio page shows the Docker app's state, active desktop connection count, and the watchdog's approximate idle countdown. It refreshes every 30 seconds for signed-in admins and can start or stop only the `bambu-studio` Docker container. The control API still requires an authenticated Supabase admin and the Cloudflare-protected `/api/bambu/*` tunnel route.
+The Bambu Studio page shows the Docker app's state, active desktop connection count, connected session details (role, transport, connection time, display, and latency), and the watchdog's approximate idle countdown. It refreshes every 30 seconds for signed-in admins and can start or stop only the `bambu-studio` Docker container. The control API still requires an authenticated Supabase admin and the Cloudflare-protected `/api/bambu/*` tunnel route.
 
 ## Update the website control API
 
@@ -18,6 +18,7 @@ At the Proxmox host prompt (`root@pve:~#`), push the API and wrapper into LXC 10
 pct exec 101 -- mkdir -p /root/bambu-control
 pct push 101 /root/bambu-control/main.py /root/bambu-control/main.py
 pct push 101 /root/bambu-control/pinoyproto-bambu-control /root/bambu-control/pinoyproto-bambu-control
+pct push 101 /root/bambu-control/pinoyproto-bambu-sessions /root/bambu-control/pinoyproto-bambu-sessions
 pct push 101 /root/bambu-control/update-control.sh /root/bambu-control/update-control.sh
 pct exec 101 -- bash /root/bambu-control/update-control.sh
 ```
