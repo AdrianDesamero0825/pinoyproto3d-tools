@@ -526,15 +526,13 @@
       return { ...linkedTracker, created: !tracker, quotedAmount };
     }
 
-    async function syncQuotationWorkflow(quotationId, customerName, projectName, quotedAmount, supersedesId) {
-      const { data, error } = await supabaseClient.rpc("sync_quotation_workflow", {
-        p_quotation_id:quotationId,
-        p_customer_name:customerName,
-        p_project_name:projectName,
+    async function createQuotationWorkflow(record, quotedAmount, supersedesId) {
+      const { data, error } = await supabaseClient.rpc("create_quotation_workflow", {
+        p_record:record,
         p_quoted_amount:quotedAmount,
         p_supersedes_id:supersedesId || null
       });
-      if (error) throw new Error(`Could not synchronize quotation workflow: ${error.message}`);
+      if (error) throw new Error(`Could not save quotation workflow: ${error.message}`);
       return data;
     }
 
@@ -644,22 +642,10 @@
         }
       }
       const quotedAmount = items.reduce((total, item) => total + Number(item.qty || 0) * Number(item.price || 0), 0);
-      const { data: savedQuotation, error: saveError } = await supabaseClient
-        .from("quotations")
-        .upsert(record)
-        .select("id")
-        .single();
-      if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
       let linkedTracker;
       let projectRecord = null;
       if (fullModelAvailable) {
-        const syncResult = await syncQuotationWorkflow(
-          savedQuotation.id,
-          record.customer_name,
-          record.project_name,
-          quotedAmount,
-          supersedesId
-        );
+        const syncResult = await createQuotationWorkflow(record, quotedAmount, supersedesId);
         linkedTracker = {
           id:syncResult.tracker_id,
           project_name:record.project_name,
@@ -669,6 +655,12 @@
         };
         projectRecord = { revisionNumber:syncResult.revision_number };
       } else {
+        const { data: savedQuotation, error: saveError } = await supabaseClient
+          .from("quotations")
+          .upsert(record)
+          .select("id")
+          .single();
+        if (saveError) throw new Error(`Could not save quotation: ${saveError.message}`);
         linkedTracker = await linkQuotationToTracker(savedQuotation.id, record.customer_name, record.project_name, quotedAmount);
       }
       fields.quoteNo.value = record.quotation_number;

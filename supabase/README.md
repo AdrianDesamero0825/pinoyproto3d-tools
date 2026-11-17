@@ -34,6 +34,8 @@ Apply `migrations/20261118040000_tracker_keys.sql` and `migrations/2026111805000
 
 Apply `migrations/20261118060000_remove_legacy_public_policies.sql` after the payment migration. It removes legacy anonymous quotation and tracker policies that would otherwise combine with the enterprise policies through PostgreSQL's permissive OR behavior. After this migration, unauthenticated users cannot read or create business records.
 
+Apply `migrations/20261118070000_atomic_quotation_workflow.sql` last. The quotation maker sends the quotation payload to one transactional security-definer function that creates the quotation, project, tracker, and revision linkage together. Any failure rolls back the complete workflow instead of leaving an orphan quotation. The previous two-step synchronization RPC is no longer executable by authenticated clients.
+
 The migration is designed to preserve existing records. Review the generated project list before deleting or merging any duplicates.
 
 ```powershell
